@@ -150,6 +150,8 @@ private:
 	int m_nMouseX, m_nMouseY;
 	bool m_bFullScreenMode;
 	bool m_bLockPaint;
+	bool m_bShowInfo;
+	bool m_bShowHelp;
 	int m_nCurrentTimeout;
 	POINT m_startMouse;
 	CSize m_virtualImageSize;
@@ -206,7 +208,6 @@ private:
 	CRect ScreenToDIB(const CSize& sizeDIB, const CRect& rect);
 	int GetLoadErrorAfterOpenFile();
 	bool UseSlideShowTransitionEffect();
-	void AnimateTransition();
     void CleanupAndTeminate();
     // this is for animated GIFs
     void StartAnimation();

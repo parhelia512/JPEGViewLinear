@@ -22,3 +22,12 @@ JPEG, PNG, WEBP, GIF, BMP, TIFF.
 
 * 64-bit Windows OS
 * CPU with SSE2
+
+## Changelog
+
+* 1.02 Pressing the 'F1' key will now display the available keyboard shortcuts.
+The application now uses the default icon when no images are loaded.
+The application now reacts to drag'n'drop.
+The application now shows a helpful message when launched without specifying any files/folders to open.
+
+* 1.01 Pressing the 'I' key will now display various info on current image and processing parameters.

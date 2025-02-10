@@ -100,9 +100,6 @@ public:
 	// Notice that the returned image is always 32 bpp!
 	static void* SampleUp_SIMD(CSize fullTargetSize, CPoint fullTargetOffset, CSize clippedTargetSize, CSize sourceSize, const void* pPixels, int nChannels, SIMDArchitecture simd);
 
-	// Debug: Gives some timing info of the last resize operation
-	static LPCTSTR TimingInfo();
-
 private:
 	CBasicProcessing(void);
 };

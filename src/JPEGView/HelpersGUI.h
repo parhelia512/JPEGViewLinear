@@ -6,6 +6,9 @@ enum EProcessingFlags;
 
 namespace HelpersGUI {
 
+	// Draws a text with a black outline to improve readability. nFormat is according to format in GDI DrawText method.
+	void DrawTextBordered(CDC& dc, LPCTSTR sText, const CRect& rect, UINT nFormat);
+	
 	// Errors that occur during loading a file or pasting from clipboard
 	enum EFileLoadError {
 		FileLoad_Ok = 0,

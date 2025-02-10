@@ -22,9 +22,6 @@
 
 #define ALPHA_OPAQUE 0xFF000000
 
-// holds last resize timing info
-static TCHAR s_TimingInfo[256];
-
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Processing images stripwise on thread pool
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -910,9 +907,6 @@ void* CBasicProcessing::SampleUp_SIMD(CSize fullTargetSize, CPoint fullTargetOff
 	return bSuccess ? pTarget : NULL;
 	}
 
-LPCTSTR CBasicProcessing::TimingInfo() {
-	return s_TimingInfo;
-}
 
 
 
@@ -1226,35 +1220,26 @@ void* SampleDown_SSE_Core_f32(CSize fullTargetSize, CPoint fullTargetOffset, CSi
 	int nStartY = nIncOffsetY + nIncrementY*fullTargetOffset.y - 65536*nFirstY;
 
 	// Resize Y
-	double t1 = Helpers::GetExactTickCount();
 	CFloatImage* pImage1 = new CFloatImage(sourceSize.cx, sourceSize.cy, nFirstX, nLastX, nFirstY, nLastY, pPixels, nChannels, 8);
 	if (pImage1->AlignedPtr() == NULL) {
 		delete pImage1;
 		return NULL;
 	}
-	double t2 = Helpers::GetExactTickCount();
 	CFloatImage* pImage2 = ApplyFilter_SSE_f32(pImage1->GetHeight(), clippedTargetSize.cy, pImage1->GetWidth(), nStartY, 0, nIncrementY, kernelsY, nFilterOffsetY, pImage1, false);
 	delete pImage1;
 	if (pImage2 == NULL) return NULL;
-	double t3 = Helpers::GetExactTickCount();
 	// Rotate
 	CFloatImage* pImage3 = Rotate_f32(pImage2, 4);
 	delete pImage2;
 	if (pImage3 == NULL) return NULL;
-	double t4 = Helpers::GetExactTickCount();
 	// Resize Y again
 	CFloatImage* pImage4 = ApplyFilter_SSE_f32(pImage3->GetHeight(), clippedTargetSize.cx, clippedTargetSize.cy, nStartX, 0, nIncrementX, kernelsX, nFilterOffsetX, pImage3, true);
 	delete pImage3;
 	if (pImage4 == NULL) return NULL;
-	double t5 = Helpers::GetExactTickCount();
 	// Rotate back
 	void* pTargetDIB = RotateToDIB_f32(pImage4, 4, pTarget);
-	double t6 = Helpers::GetExactTickCount();
-
 	delete pImage4;
 
-	_stprintf_s(s_TimingInfo, 256, _T("Create: %.2f, Filter1: %.2f, Rotate: %.2f, Filter2: %.2f, Rotate: %.2f"), t2 - t1, t3 - t2, t4 - t3, t5 - t4, t6 - t5);
-	
 	return pTargetDIB;
 	}
 
@@ -1290,34 +1275,25 @@ void* SampleDown_AVX_Core_f32(CSize fullTargetSize, CPoint fullTargetOffset, CSi
 	int nStartY = nIncOffsetY + nIncrementY*fullTargetOffset.y - 65536 * nFirstY;
 
 	// Resize Y
-	double t1 = Helpers::GetExactTickCount();
 	CFloatImage* pImage1 = new CFloatImage(sourceSize.cx, sourceSize.cy, nFirstX, nLastX, nFirstY, nLastY, pPixels, nChannels, 16);
 	if (pImage1->AlignedPtr() == NULL) {
 		delete pImage1;
 		return NULL;
 	}
-	double t2 = Helpers::GetExactTickCount();
 	CFloatImage* pImage2 = ApplyFilter_AVX_f32(pImage1->GetHeight(), clippedTargetSize.cy, pImage1->GetWidth(), nStartY, 0, nIncrementY, kernelsY, nFilterOffsetY, pImage1, false);
 	delete pImage1;
 	if (pImage2 == NULL) return NULL;
-	double t3 = Helpers::GetExactTickCount();
 	// Rotate
 	CFloatImage* pImage3 = Rotate_f32(pImage2, 8);
 	delete pImage2;
 	if (pImage3 == NULL) return NULL;
-	double t4 = Helpers::GetExactTickCount();
 	// Resize Y again
 	CFloatImage* pImage4 = ApplyFilter_AVX_f32(pImage3->GetHeight(), clippedTargetSize.cx, clippedTargetSize.cy, nStartX, 0, nIncrementX, kernelsX, nFilterOffsetX, pImage3, true);
 	delete pImage3;
 	if (pImage4 == NULL) return NULL;
-	double t5 = Helpers::GetExactTickCount();
 	// Rotate back
 	void* pTargetDIB = RotateToDIB_f32(pImage4, 8, pTarget);
-	double t6 = Helpers::GetExactTickCount();
-
 	delete pImage4;
-
-	_stprintf_s(s_TimingInfo, 256, _T("Create: %.2f, Filter1: %.2f, Rotate: %.2f, Filter2: %.2f, Rotate: %.2f"), t2 - t1, t3 - t2, t4 - t3, t5 - t4, t6 - t5);
 
 	return pTargetDIB;
 }

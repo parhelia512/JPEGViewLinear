@@ -90,7 +90,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	if(*StartupFile == '\0')
 		{
 		/* Debugging */	::OutputDebugStringW(TEXT("JPEGVIEW: StartupFile is empty"));
-		return(0);
+	//	::CoUninitialize();
+	//	return(0);
 		}
 
 	// this resolves ATL window thunking problem when Microsoft Layer for Unicode (MSLU) is used

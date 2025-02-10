@@ -392,7 +392,7 @@ bool CJPEGImage::VerifyRotation(int nRotation) {
 	}
 
 bool CJPEGImage::Rotate(int nRotation) {
-	double dStartTickCount = Helpers::GetExactTickCount();
+//*GF*/	double dStartTickCount = Helpers::GetExactTickCount();
 
 	// Rotation can only be done in 32 bpp
 	if (!ConvertSrcTo4Channels()) {
@@ -412,12 +412,12 @@ bool CJPEGImage::Rotate(int nRotation) {
 	}
 	m_nRotation = (m_nRotation + nRotation) % 360;
 
-	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
+//*GF*/	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
 	return true;
 }
 
 bool CJPEGImage::Mirror(bool bHorizontally) {
-	double dStartTickCount = Helpers::GetExactTickCount();
+//*GF*/	double dStartTickCount = Helpers::GetExactTickCount();
 
 	// Rotation can only be done in 32 bpp
 	if (!ConvertSrcTo4Channels()) {
@@ -433,7 +433,7 @@ bool CJPEGImage::Mirror(bool bHorizontally) {
 //	MarkAsDestructivelyProcessed();
 //	m_bIsProcessedNoParamDB = true;
 
-	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
+//*GF*/	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
 	return true;
 	}
 
@@ -534,9 +534,9 @@ void* CJPEGImage::GetDIBInternal(CSize fullTargetSize, CSize clippingSize, CPoin
 			pDIB = ApplyCorrectionLUTandLDC(eProcFlags, m_pDIBPixelsLUTProcessed, fullTargetSize, targetOffset, m_pDIBPixels, clippingSize, bMustResampleGeometry, false, false);
 		else
 			pDIB = m_pDIBPixelsLUTProcessed;
-		}
 
-	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount; 
+		m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount; 
+		}
 
 	// set these parameters after ApplyCorrectionLUT() - else it cannot be detected that the parameters changed
 	m_eProcFlags = eProcFlags;

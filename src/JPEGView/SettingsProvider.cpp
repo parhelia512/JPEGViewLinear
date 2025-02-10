@@ -83,7 +83,8 @@ CSettingsProvider::CSettingsProvider(void)
 
 /*GF*/	TCHAR debugtext[512];
 
-	CString sCPU = GetString(_T("CPUType"), _T("AutoDetect"));
+	CString sCPU = GetString(_T("CPUType"), _T(""));
+
 	if (sCPU.CompareNoCase(_T("Generic")) == 0) {
 		m_eCPUAlgorithm = Helpers::CPU_Generic;
 	}
@@ -93,9 +94,13 @@ CSettingsProvider::CSettingsProvider(void)
 	else if (sCPU.CompareNoCase(_T("AVX2")) == 0) {
 		m_eCPUAlgorithm = Helpers::CPU_AVX2;
 	}
-	else {
+	else if (sCPU.CompareNoCase(_T("AutoDetect")) == 0) {
 		m_eCPUAlgorithm = Helpers::ProbeCPU();
 	}
+	else {
+		m_eCPUAlgorithm = Helpers::CPU_SSE;		// Default to SSE2 with empty/invalid value
+	}
+
 /*GF*/	swprintf(debugtext,255,TEXT("m_eCPUAlgorithm: %d (0=unknown, 1=generic, 2=sse, 3=avx2)"), m_eCPUAlgorithm);
 /*GF*/	::OutputDebugStringW(debugtext);
 

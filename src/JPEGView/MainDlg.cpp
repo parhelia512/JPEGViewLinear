@@ -59,10 +59,11 @@ static TCHAR s_PrevTitleText[MAX_PATH];
 
 CMainDlg::CMainDlg()
 	{
-	CSettingsProvider& sp = CSettingsProvider::This();
-
 	CResizeFilterCache::This(); // Access before multiple threads are created
 
+	CSettingsProvider& sp = CSettingsProvider::This();
+	m_nMangaSinglePageVisibleHeight = sp.MangaSinglePageVisibleHeight();
+	
 	m_bHQResampling = true;
 
 	m_pFileList = NULL;
@@ -84,6 +85,8 @@ CMainDlg::CMainDlg()
 	m_nMouseX = m_nMouseY = 0;
 	m_bFullScreenMode = false;
 	m_bLockPaint = true;
+	m_bShowInfo = false;
+	m_bShowHelp = false;
 	m_nCurrentTimeout = 0;
 	m_startMouse.x = m_startMouse.y = -1;
 	m_virtualImageSize = CSize(-1, -1);
@@ -102,7 +105,6 @@ CMainDlg::CMainDlg()
 	m_bDWMenabled = FALSE;
 	m_DynDwmFlush = 0;
 	m_dLastImageDisplayTime = 0.0;
-	m_nMangaSinglePageVisibleHeight = CSettingsProvider::This().MangaSinglePageVisibleHeight();
 	}
 
 CMainDlg::~CMainDlg()
@@ -117,7 +119,9 @@ CMainDlg::~CMainDlg()
 	}
 
 LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
-	{	
+	{
+	this->SetWindowText(_T("JPEGView"));
+	
 	CPaintDC dc(this->m_hWnd);
 
 	HRESULT hresult = !S_OK;
@@ -145,36 +149,8 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		}
 
 	m_pDirectoryWatcher = new CDirectoryWatcher(m_hWnd);
-	
+
 	CSettingsProvider& sp = CSettingsProvider::This();
-/* Debugging */	Helpers::CPUType cpu = sp.AlgorithmImplementation();
-/* Debugging */	EFilterType filter = sp.DownsamplingFilter();
-/* Debugging */	TCHAR sCPU[64];
-/* Debugging */	TCHAR sFilter[64];
-/* Debugging */	TCHAR debugtext[512];
-/* Debugging */	if (cpu == Helpers::CPU_Unknown)
-/* Debugging */		swprintf(sCPU,64,TEXT("%s"), TEXT("Unknown CPU"));
-/* Debugging */	else if (cpu == Helpers::CPU_Generic)
-/* Debugging */		swprintf(sCPU,64,TEXT("%s"), TEXT("Generic CPU"));
-/* Debugging */	else if (cpu == Helpers::CPU_SSE)
-/* Debugging */		swprintf(sCPU,64,TEXT("%s"), TEXT("128 bit SSE2"));
-/* Debugging */	else if (cpu == Helpers::CPU_AVX2)
-/* Debugging */		swprintf(sCPU,64,TEXT("%s"), TEXT("256 bit AVX2"));
-
-/* Debugging */	if (filter == Filter_Downsampling_None)
-/* Debugging */		swprintf(sFilter,64,TEXT("%s"), TEXT("Filter_Downsampling_None"));
-/* Debugging */	else if (filter == Filter_Downsampling_Hermite)
-/* Debugging */		swprintf(sFilter,64,TEXT("%s"), TEXT("Filter_Downsampling_Hermite"));
-/* Debugging */	else if (filter == Filter_Downsampling_Catrom)
-/* Debugging */		swprintf(sFilter,64,TEXT("%s"), TEXT("Filter_Downsampling_Catrom"));
-/* Debugging */	else if (filter == Filter_Downsampling_Mitchell)
-/* Debugging */		swprintf(sFilter,64,TEXT("%s"), TEXT("Filter_Downsampling_Mitchell"));
-/* Debugging */	else if (filter == Filter_Downsampling_Lanczos2)
-/* Debugging */		swprintf(sFilter,64,TEXT("%s"), TEXT("Filter_Downsampling_Lanczos2"));
-/* Debugging */	
-/* Debugging */	swprintf(debugtext,255,TEXT("[JpegView] %s / %s"), sCPU, sFilter);
-//* Debugging */	::OutputDebugStringW(debugtext);
-
 	// intitialize list of files to show with startup file (and folder)
 	m_pFileList = new CFileList(m_sStartupFile, *m_pDirectoryWatcher,
 		(m_eForcedSorting == Helpers::FS_Undefined) ? sp.Sorting() : m_eForcedSorting, sp.IsSortedUpcounting(), sp.WrapAroundFolder(),
@@ -248,19 +224,14 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_bLockPaint = false;
 
 	this->Invalidate(FALSE);
-    //this->UpdateWindow();
+	
+	this->DragAcceptFiles();
 
 	return TRUE;
 	}
 
 LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
-	UINT t1 = 0;
-	UINT t2 = 0;
-	UINT t3 = 0;
-
-/* Debugging */	TCHAR debugtext[512];
-
 	if (m_bLockPaint)
 		return 0;
 
@@ -273,21 +244,65 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 	CBrush backBrush;
 	backBrush.CreateSolidBrush(RGB(0,0,0));
 
-	if (m_pCurrentImage == NULL)
+	TCHAR infoText[4096];
+
+	if (m_bShowHelp)
 		{
-		t2 = timeGetTime();
+		dc.FillRect(&m_clientRect, backBrush);
+		_stprintf_s(infoText,4096,_T("General\n\n   F1          Show key help\n   I           Show general info\n   F5          Reload image\n\n   Esc         Close viewer\n   M           Minimize viewer\n   Return      Toggle display: Fullscreen <-> Window\n\n   Ctrl + E    Edit image in default application\n   Ctrl + G    Edit image in GIMP\n   Ctrl + L    Open image directory in file manager\n   Del         Delete image\n\nNavigation\n\n   Home        Go to first image in folder\n   End         Go to last image in folder\n\n   Page Up     Pan up\n   Page Down   Pan down\n\n   Backspace   Move to previous image\n   Space       Move to next image\n\n   Up          Pan up / Move to previous image (Manga Mode only)\n   Down        Pan down / Move to next image (Manga Mode only)\n   Left        Pan left / Move to previous image\n   Right       Pan right / Move to next image\n\n   Left mouse  Move to previous image\n   Right mouse Move to next image\n\n   Wheel Up    Move to previous image\n   Wheel Down  Move to next image\n   Z           Toggle sorting: By Name <-> Random\n   A           Switch to alternative language folder (en|de|ch|ko)\n\nDisplay\n\n   +           Zoom in\n   -           Zoom out\n   F           Toggle display mode: 100%% <-> Zoomed to window\n   H           Mirror image horizontally\n   V           Mirror image vertically\n   L           Rotate image clockwise\n   R           Rotate image counterclockwise"));
+
+		HFONT hFont;
+		int FontSize = 26;
+
+		CRect testRect(0, 0, 4096, 4096);
+		CSize testRectHeight;
+
+		while (FontSize > 8)
+			{
+			hFont = CreateFont(FontSize,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("CONSOLAS"));
+			dc.SelectFont(hFont);
+			::DrawTextW(dc,infoText,::_tcslen(infoText),&testRect,DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK | DT_CALCRECT);
+			if (testRect.Height() < m_clientRect.Height())
+				break;
+			
+			DeleteObject(hFont);
+			FontSize -= 1;
+			}
+
+		dc.SetBkColor(RGB(0,0,0));
+		dc.SetBkMode(OPAQUE);	// OPAQUE or TRANSPARENT
+		dc.SetTextColor(RGB(255,255,255));
+		CRect rectText(15, 15, m_clientRect.Width(), m_clientRect.Height());
+		::DrawText(dc,infoText,::_tcslen(infoText),&rectText,DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK | DT_NOPREFIX);
+		DeleteObject(hFont);
+		}
+	else if (m_sStartupFile.IsEmpty() && m_pCurrentImage == NULL)
+		{
+		_stprintf_s(infoText,4096,_T("To load images or folders, pass them on the command line or drag and drop them onto this window.\n\nTo display the list of available keyboard shortcuts, press 'F1'."));
 
 		dc.FillRect(&m_clientRect, backBrush);
-
-		// Display errors and warnings
-
-		HFONT hFont = CreateFont(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("TAHOMA"));
+		HFONT hFont = CreateFont(20,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("MS Shell Dlg 2"));
 		dc.SelectFont(hFont);
-		//dc.SelectStockFont(SYSTEM_FONT);
+		dc.SetBkMode(TRANSPARENT);
+		dc.SetTextColor(RGB(255,255,255));
+		dc.SetBkColor(RGB(0,0,0));
+		dc.SetBkMode(OPAQUE);	// OPAQUE / TRANSPARENT
+		
+		CRect rectText(0, m_clientRect.Height()/2 - 40, m_clientRect.Width(), m_clientRect.Height());
+		::DrawText(dc,infoText,::_tcslen(infoText),&rectText,DT_CENTER | DT_EXTERNALLEADING | DT_WORDBREAK | DT_NOPREFIX);
+		
+		DeleteObject(hFont);		
+		}
+	else if (m_pCurrentImage == NULL)
+		{
+		dc.FillRect(&m_clientRect, backBrush);
+		HFONT hFont = CreateFont(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("MS Shell Dlg 2"));
+		dc.SelectFont(hFont);
 		dc.SetBkMode(TRANSPARENT);
 		dc.SetTextColor(RGB(255,255,255));
 		dc.SetBkColor(RGB(0,0,0));
 
+		// Display errors and warnings
 		HelpersGUI::DrawImageLoadErrorText(dc, m_clientRect,
 			(m_nLastLoadError == HelpersGUI::FileLoad_SlideShowListInvalid) ? m_sStartupFile :
 			(m_nLastLoadError == HelpersGUI::FileLoad_NoFilesInDirectory) ? m_pFileList->CurrentDirectory() : CurrentFileName(),
@@ -312,7 +327,6 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 		void* pDIBData;
 		pDIBData = m_pCurrentImage->GetDIB(newSize, clippedSize, offsetsInImage, (m_bTemporaryLowQ ? PFLAG_None : PFLAG_HighQualityResampling));
 
-/* Debugging */	double t2 = Helpers::GetExactTickCount();
 
 		// Paint the DIB
 		if (pDIBData != NULL)
@@ -321,10 +335,65 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 			CPoint ptDIBStart = HelpersGUI::DrawDIB32bppWithBlackBorders(dc, bmInfo, pDIBData, backBrush, m_clientRect, clippedSize);
 			}
 
-/* Debugging */	double t3 = Helpers::GetExactTickCount();
+/* Debugging */	double t2 = Helpers::GetExactTickCount();
 
-/* Debugging */	_stprintf_s(debugtext, 256, _T("[JpegView] Loading: %.2f ms, Last op: %.2f ms, Last resize: %s, OnPaint GetDIB %d ms, OnPaint PaintDIB %d ms"), m_pCurrentImage->GetLoadTickCount(), m_pCurrentImage->LastOpTickCount(), CBasicProcessing::TimingInfo(), t2-t1, t3-t2);
-//* Debugging */	::OutputDebugStringW(debugtext);
+
+		if (m_bShowInfo)
+			{
+			if (m_pCurrentImage != NULL)
+				{
+				CSettingsProvider& sp = CSettingsProvider::This();
+				int iNumThreads = sp.NumberOfCoresToUse();
+				Helpers::CPUType cpu = sp.AlgorithmImplementation();
+				EFilterType filter = sp.DownsamplingFilter();
+				TCHAR sCPU[64];
+				TCHAR sFilter[64];
+
+				if (cpu == Helpers::CPU_Unknown)
+					swprintf(sCPU,64,TEXT("%s"), TEXT("Unknown"));
+				else if (cpu == Helpers::CPU_Generic)
+					swprintf(sCPU,64,TEXT("%s"), TEXT("Generic"));
+				else if (cpu == Helpers::CPU_SSE)
+					swprintf(sCPU,64,TEXT("%s"), TEXT("SSE2 (128 bit)"));
+				else if (cpu == Helpers::CPU_AVX2)
+					swprintf(sCPU,64,TEXT("%s"), TEXT("AVX2 (256 bit)"));
+
+				if (filter == Filter_Downsampling_None)
+					swprintf(sFilter,64,TEXT("%s"), TEXT("None"));
+				else if (filter == Filter_Downsampling_Hermite)
+					swprintf(sFilter,64,TEXT("%s"), TEXT("Hermite"));
+				else if (filter == Filter_Downsampling_Catrom)
+					swprintf(sFilter,64,TEXT("%s"), TEXT("Catrom"));
+				else if (filter == Filter_Downsampling_Mitchell)
+					swprintf(sFilter,64,TEXT("%s"), TEXT("Mitchell"));
+				else if (filter == Filter_Downsampling_Lanczos2)
+					swprintf(sFilter,64,TEXT("%s"), TEXT("Lanczos2"));
+
+
+				unsigned int iRealWidth = unsigned int (m_dZoom * (m_pCurrentImage->OrigWidth()));
+				unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
+
+				LPCTSTR sFullPath = CurrentFileName();
+				if (sFullPath != NULL)
+					_stprintf_s(infoText,4096,_T("%s\nFile Size:   %d Bytes\nImage Size:  %d x %d\nZoomed Size: %d x %d   (Zoom Factor: %f)\nWindow Size: %d x %d\n\nCPU-Threads:         %d\nCPU-Algorithm:       %s\nDownsampling-Filter: %s\n\nLoading Image:    %.2f ms\nScaling Image:    %.2f ms\nOnPaint GetDIB:   %.2f ms"),sFullPath,(UINT)Helpers::GetFileSize(sFullPath),m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height(),iNumThreads,sCPU,sFilter,m_pCurrentImage->GetLoadTickCount(), m_pCurrentImage->LastOpTickCount(), t2-t1);
+				else
+					_stprintf_s(infoText,4096,_T("\n\nImage Size:  %d  x%d\nZoomed Size: %d x %d   (Zoom Factor: %f)\nWindow Size: %d x %d\n\nCPU-Threads:         %d\nCPU-Algorithm:       %s\nDownsampling-Filter: %s\n\nLoading Image:    %.2f ms\nScaling Image:    %.2f ms\nOnPaint GetDIB:   %.2f ms"),m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height(),iNumThreads,sCPU,sFilter,m_pCurrentImage->GetLoadTickCount(), m_pCurrentImage->LastOpTickCount(), t2-t1);
+
+				HFONT hFont = CreateFont(25,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("CONSOLAS"));
+				dc.SelectFont(hFont);
+				dc.SetBkColor(RGB(0,0,0));
+				dc.SetTextColor(RGB(255,255,255));
+
+				dc.SetBkMode(OPAQUE);	// OPAQUE / TRANSPARENT
+				::DrawText(dc,infoText,::_tcslen(infoText),&m_clientRect,DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK | DT_NOPREFIX);
+				
+				// Variant with outlined text
+				//dc.SetBkMode(TRANSPARENT);	// OPAQUE / TRANSPARENT
+				//HelpersGUI::DrawTextBordered(dc, infoText, &m_clientRect, DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK | DT_NOPREFIX);
+				
+				DeleteObject(hFont);
+				}
+			}
 		}
 
 	if (m_bInLowQTimer == true)
@@ -353,7 +422,6 @@ LRESULT CMainDlg::OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& 
 		}
 
 	this->Invalidate(FALSE);		// will cause an OnPaint() in which the offsets and zoom are recalculated before repainting
-	//this->UpdateWindow();
 
 	return 0;
 	}
@@ -405,7 +473,6 @@ LRESULT CMainDlg::OnRefreshView(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 		{
 		m_pFileList->Reload(NULL);
 		this->Invalidate(FALSE);
-		//this->UpdateWindow();
 		}
 
 	if (m_pCurrentImage != NULL)
@@ -509,7 +576,6 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 					if (PerformPan(0, -PAN_STEP, false) == true)	// m_virtualImageSize.cy/25
 						{
 						this->Invalidate(FALSE);
-						//this->UpdateWindow();
 						}
 					}
 				else
@@ -520,7 +586,6 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 						if (PerformPan(0, -PAN_STEP, false) == true)	// m_virtualImageSize.cy/25
 							{
 							this->Invalidate(FALSE);
-							//this->UpdateWindow();
 							}
 						}
 					else
@@ -536,7 +601,6 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 					if (PerformPan(0, PAN_STEP, false) == true)
 						{
 						this->Invalidate(FALSE);
-						//this->UpdateWindow();
 						}
 					}
 				else
@@ -547,7 +611,6 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 						if (PerformPan(0, PAN_STEP, false) == true)
 							{
 							this->Invalidate(FALSE);
-							//this->UpdateWindow();
 							}
 						}
 					else
@@ -582,18 +645,12 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 	else if (wParam == VK_PAGE_UP)
 		{
 		if (PerformPan(0,+(m_clientRect.Height()),false) == true)
-			{
 			this->Invalidate(FALSE);
-			//this->UpdateWindow();
-			}
 		}
 	else if (wParam == VK_PAGE_DOWN)
 		{
 		if (PerformPan(0,-(m_clientRect.Height()),false) == true)
-			{
 			this->Invalidate(FALSE);
-			//this->UpdateWindow();
-			}
 		}
 	else if (wParam == VK_SPACE)
 		{
@@ -687,7 +744,14 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 		}
 	else if (wParam == VK_F1)
 		{
-		::MessageBox(CMainDlg::m_hWnd,TEXT("F1\t\tHotkey Help\nF5\t\tReload Page\n\nEsc\t\tClose Viewer\nDel\t\tDelete Page\n\nHome\t\tFirst Page\nEnd\t\tLast Page\n\nPage Up\t\tPrevious Page\nPage Down\tNext Page\n\nBackspace\tPrevious Page\nSpace\t\tNext Page\n\nUp\t\tPan Up / Previous Page\nDown\t\tPan Down / Next Page\nLeft\t\tPan Left / Previous Page\nRight\t\tPan Right / Next Page\n\n+\t\tZoom In\n-\t\tZoom Out\nReturn\t\tFullScreen/Window\nA\t\tSwitch Language\nCtrl+E\t\tEdit Page\nF\t\tSize\nCtrl+G\t\tEdit Page (Gimp)\nH\t\tHorizontal Mirroring\nI\t\tPage Info\nL\t\tRotate left\nCtrl+L\t\tOpen Folder\nM\t\tMinimize Viewer\nR\t\tRotate right\nV\t\tVertical Mirroring\nZ\t\tSwitch Sorting Normal/Random"),TEXT("ImageViewer Hotkeys"),MB_OK | MB_TASKMODAL);
+		m_bShowInfo = false;
+
+		if (m_bShowHelp == false)
+			m_bShowHelp = true;
+		else
+			m_bShowHelp = false;
+
+		this->Invalidate(FALSE);
 		}
 	else if (wParam == VK_F5)
 		{
@@ -695,7 +759,6 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			{
 			m_pFileList->Reload(NULL);
 			this->Invalidate(FALSE);
-			//this->UpdateWindow();
 			}
 
 		if (m_pCurrentImage != NULL)
@@ -711,71 +774,6 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			}
 
 		this->Invalidate(FALSE);		// will cause an OnPaint() in which the offsets and zoom are recalculated before repainting
-		//this->UpdateWindow();
-
-		/*
-		LPCTSTR sCurrentFileName = CurrentFileName();
-		if (sCurrentFileName != NULL)
-			{
-			TCHAR sFullPath[MAX_PATH];
-			lstrcpy(sFullPath,sCurrentFileName);
-			
-			TCHAR sFNameNoExt[MAX_PATH];
-			_wsplitpath(sFullPath,NULL,NULL,sFNameNoExt,NULL);
-
-			TCHAR sParentDir[MAX_PATH];
-			lstrcpy(sParentDir,sFullPath);
-			PathRemoveFileSpec(sParentDir);
-
-			TCHAR sParentDir2[MAX_PATH];
-			lstrcpy(sParentDir2,sParentDir);
-			PathRemoveFileSpec(sParentDir2);
-
-			TCHAR sParentDirName[MAX_PATH];
-			lstrcpy(sParentDirName,sParentDir);
-			PathStripPath(sParentDirName);
-
-			TCHAR sAltPath[MAX_PATH] = TEXT("");
-			if (StrStrI(sParentDirName,TEXT(" [en2]")) != NULL)
-				{
-				CString sAltParentDirNameC = ReplaceNoCase(sParentDirName,TEXT(" [en2]"),TEXT(""));
-				wsprintf(sAltPath,TEXT("%s\\%s\\%s"),sParentDir2,(LPCTSTR)sAltParentDirNameC,sFNameNoExt);
-				}
-			else if (StrStrI(sParentDirName,TEXT(" [en1]")) != NULL)
-				{
-				CString sAltParentDirNameC = ReplaceNoCase(sParentDirName,TEXT(" [en1]"),TEXT(""));
-				wsprintf(sAltPath,TEXT("%s\\%s\\%s"),sParentDir2,(LPCTSTR)sAltParentDirNameC,sFNameNoExt);
-				}
-			else
-				{
-				return 1;
-				}
-
-			TCHAR sTargetPath[MAX_PATH] = TEXT("");
-
-			wsprintf(sTargetPath,TEXT("%s.jpg"),sAltPath);
-			if (::PathFileExists(sTargetPath))
-				OpenFile(sTargetPath,false);
-			else
-				{
-				wsprintf(sTargetPath,TEXT("%s.png"),sAltPath);
-				if (::PathFileExists(sTargetPath))
-					OpenFile(sTargetPath,false);
-				else
-					{
-					wsprintf(sTargetPath,TEXT("%s.jpeg"),sAltPath);
-					if (::PathFileExists(sTargetPath))
-						OpenFile(sTargetPath,false);
-					else
-						{
-						wsprintf(sTargetPath,TEXT("%s.bmp"),sAltPath);
-						if (::PathFileExists(sTargetPath))
-							OpenFile(sTargetPath,false);
-						}
-					}
-				}
-			}
-		*/
 		}
 	else if (wParam == '2')
 		{
@@ -787,136 +785,6 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			}
 
 		this->Invalidate(FALSE);		// will cause an OnPaint() in which the offsets and zoom are recalculated before repainting
-		//this->UpdateWindow();
-
-		/*
-		LPCTSTR sCurrentFileName = CurrentFileName();
-		if (sCurrentFileName != NULL)
-			{
-			TCHAR sFullPath[MAX_PATH];
-			lstrcpy(sFullPath,sCurrentFileName);
-			
-			TCHAR sFNameNoExt[MAX_PATH];
-			_wsplitpath(sFullPath,NULL,NULL,sFNameNoExt,NULL);
-
-			TCHAR sParentDir[MAX_PATH];
-			lstrcpy(sParentDir,sFullPath);
-			PathRemoveFileSpec(sParentDir);
-
-			TCHAR sParentDir2[MAX_PATH];
-			lstrcpy(sParentDir2,sParentDir);
-			PathRemoveFileSpec(sParentDir2);
-
-			TCHAR sParentDirName[MAX_PATH];
-			lstrcpy(sParentDirName,sParentDir);
-			PathStripPath(sParentDirName);
-
-			TCHAR sAltPath[MAX_PATH] = TEXT("");
-			if (StrStrI(sParentDirName,TEXT(" [en1]")) != NULL)
-				{
-				return 1;
-				}
-			else if (StrStrI(sParentDirName,TEXT(" [en2]")) != NULL)
-				{
-				CString sAltParentDirNameC = ReplaceNoCase(sParentDirName,TEXT(" [en2]"),TEXT(" [en1]"));
-				wsprintf(sAltPath,TEXT("%s\\%s\\%s"),sParentDir2,(LPCTSTR)sAltParentDirNameC,sFNameNoExt);
-				}
-			else
-				{
-				wsprintf(sAltPath,TEXT("%s\\%s [en1]\\%s"),sParentDir2,sParentDirName,sFNameNoExt);
-				}
-
-			TCHAR sTargetPath[MAX_PATH] = TEXT("");
-
-			wsprintf(sTargetPath,TEXT("%s.jpg"),sAltPath);
-			if (::PathFileExists(sTargetPath))
-				OpenFile(sTargetPath,false);
-			else
-				{
-				wsprintf(sTargetPath,TEXT("%s.png"),sAltPath);
-				if (::PathFileExists(sTargetPath))
-					OpenFile(sTargetPath,false);
-				else
-					{
-					wsprintf(sTargetPath,TEXT("%s.jpeg"),sAltPath);
-					if (::PathFileExists(sTargetPath))
-						OpenFile(sTargetPath,false);
-					else
-						{
-						wsprintf(sTargetPath,TEXT("%s.bmp"),sAltPath);
-						if (::PathFileExists(sTargetPath))
-							OpenFile(sTargetPath,false);
-						}
-					}
-				}
-			}
-		*/
-		}
-	else if (wParam == '3')
-		{
-		
-		/*
-		LPCTSTR sCurrentFileName = CurrentFileName();
-		if (sCurrentFileName != NULL)
-			{
-			TCHAR sFullPath[MAX_PATH];
-			lstrcpy(sFullPath,sCurrentFileName);
-			
-			TCHAR sFNameNoExt[MAX_PATH];
-			_wsplitpath(sFullPath,NULL,NULL,sFNameNoExt,NULL);
-
-			TCHAR sParentDir[MAX_PATH];
-			lstrcpy(sParentDir,sFullPath);
-			PathRemoveFileSpec(sParentDir);
-
-			TCHAR sParentDir2[MAX_PATH];
-			lstrcpy(sParentDir2,sParentDir);
-			PathRemoveFileSpec(sParentDir2);
-
-			TCHAR sParentDirName[MAX_PATH];
-			lstrcpy(sParentDirName,sParentDir);
-			PathStripPath(sParentDirName);
-
-			TCHAR sAltPath[MAX_PATH] = TEXT("");
-			if (StrStrI(sParentDirName,TEXT(" [en2]")) != NULL)
-				{
-				return 1;
-				}
-			else if (StrStrI(sParentDirName,TEXT(" [en1]")) != NULL)
-				{
-				CString sAltParentDirNameC = ReplaceNoCase(sParentDirName,TEXT(" [en1]"),TEXT(" [en2]"));
-				wsprintf(sAltPath,TEXT("%s\\%s\\%s"),sParentDir2, (LPCTSTR)sAltParentDirNameC,sFNameNoExt);
-				}
-			else
-				{
-				wsprintf(sAltPath,TEXT("%s\\%s [en2]\\%s"),sParentDir2,sParentDirName,sFNameNoExt);
-				}
-
-			TCHAR sTargetPath[MAX_PATH] = TEXT("");
-
-			wsprintf(sTargetPath,TEXT("%s.jpg"),sAltPath);
-			if (::PathFileExists(sTargetPath))
-				OpenFile(sTargetPath,false);
-			else
-				{
-				wsprintf(sTargetPath,TEXT("%s.png"),sAltPath);
-				if (::PathFileExists(sTargetPath))
-					OpenFile(sTargetPath,false);
-				else
-					{
-					wsprintf(sTargetPath,TEXT("%s.jpeg"),sAltPath);
-					if (::PathFileExists(sTargetPath))
-						OpenFile(sTargetPath,false);
-					else
-						{
-						wsprintf(sTargetPath,TEXT("%s.bmp"),sAltPath);
-						if (::PathFileExists(sTargetPath))
-							OpenFile(sTargetPath,false);
-						}
-					}
-				}
-			}
-		*/
 		}
 	else if (wParam == 'A')
 		{
@@ -1151,7 +1019,6 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			StartLowQTimer(ZOOM_TIMEOUT);
 
 			this->Invalidate(FALSE);
-			//this->UpdateWindow();
 			}
 		}
 	else if (bCtrl && wParam == 'G')
@@ -1209,39 +1076,14 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 		}
 	else if (wParam == 'I')
 		{
-		if (m_pCurrentImage != NULL)
-			{
-			unsigned int iRealWidth = unsigned int (m_dZoom * (m_pCurrentImage->OrigWidth()));
-			unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
+		m_bShowHelp = false;
 
-			LPCTSTR sFullPath = CurrentFileName();
-			if (sFullPath != NULL)
-				{
-				UINT nFileSize = (UINT)Helpers::GetFileSize(sFullPath);
+		if (m_bShowInfo == false)
+			m_bShowInfo = true;
+		else
+			m_bShowInfo = false;
 
-				TCHAR sParentDir[MAX_PATH];
-				lstrcpy(sParentDir,sFullPath);
-				PathRemoveFileSpec(sParentDir);
-
-				TCHAR sParentDirName[MAX_PATH];
-				lstrcpy(sParentDirName,sParentDir);
-				PathStripPath(sParentDirName);
-
-				TCHAR sFName[MAX_PATH];
-				lstrcpy(sFName,sFullPath);
-				PathStripPath(sFName);
-
-				TCHAR buff[1024];
-				_stprintf_s(buff,1024,_T("%s\\%s\n\nFile Size:\t\t%d Bytes\nImage Size:\t%dx%d\nZoomed Size:\t%dx%d\t(Zoom Factor: %f)\nWindow Size:\t%dx%d"),sParentDirName,sFName,nFileSize,m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height());
-				::MessageBox(CMainDlg::m_hWnd,buff,TEXT("Image Info"),MB_OK | MB_TASKMODAL);
-				}
-			else
-				{
-				TCHAR buff[1024];
-				_stprintf_s(buff,1024,_T("Image Size:\t%dx%d\nZoomed Size:\t%dx%d\t(Zoom Factor: %f)\nWindow Size:\t%dx%d"),m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height());
-				::MessageBox(CMainDlg::m_hWnd,buff,TEXT("Image Info"),MB_OK | MB_TASKMODAL);
-				}
-			}
+		this->Invalidate(FALSE);
 		}
 	else if (wParam == 'L')
 		{
@@ -1324,7 +1166,6 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 
 			m_pFileList->Reload(NULL);
 			this->Invalidate(FALSE);
-			//this->UpdateWindow();
 			}
 		}
 	
@@ -1421,9 +1262,6 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 
 			GotoImage((wParam == ANIMATION_TIMER_EVENT_ID) ? POS_NextAnimation : POS_NextSlideShow, NO_REMOVE_KEY_MSG);
 
-            //if (wParam == SLIDESHOW_TIMER_EVENT_ID && UseSlideShowTransitionEffect())
-            //    AnimateTransition();
-
             if (wParam != ANIMATION_TIMER_EVENT_ID)
                 m_nLastSlideShowImageTickCount = ::GetTickCount();
 			}
@@ -1436,10 +1274,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 			m_bTemporaryLowQ = false;
 			m_bInLowQTimer = false;
 			if (m_bHQResampling && m_pCurrentImage != NULL)
-				{
 				this->Invalidate(FALSE);
-				//this->UpdateWindow();
-				}
 			}
 		}
 	else if (wParam == PAN_TIMER_EVENT_ID)
@@ -1478,99 +1313,12 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 						::timeEndPeriod(1);
 						m_bPanTimerActive = false;
 						break;
-
-						/*
-						DoStopPan = 1;
-
-						//if (m_offsets.y>0)
-						//	BorderDistanceY = ((iRealHeight-m_clientRect.Height())/2)-m_offsets.y;	// Top
-						//else
-						//	BorderDistanceY = ((iRealHeight-m_clientRect.Height())/2)+m_offsets.y;	// Bottom
-						
-						while((PanXbase!=0)||(PanYbase!=0))
-							{
-							if (PanXbase>0)
-								PanXbase--;
-							else if (PanXbase<0)
-								PanXbase++;
-
-							if (PanYbase>0)
-								PanYbase--;
-							else if (PanYbase<0)
-								PanYbase++;
-
-							if (PerformPan(PanXbase,PanYbase,false) == true)
-								{
-								this->UpdateWindow();
-
-								MSG msg;
-								while (::PeekMessage(&msg, this->m_hWnd, 0, 0, PM_REMOVE));
-
-								Sleep(1);
-								}
-							else
-								{
-								MSG msg;
-								while (::PeekMessage(&msg, this->m_hWnd, 0, 0, PM_REMOVE));
-
-								Sleep(10);
-								}
-
-							bUp = (::GetAsyncKeyState(VK_UP) & 0x8000) != 0;
-							bDown = (::GetAsyncKeyState(VK_DOWN) & 0x8000) != 0;
-							bLeft = (::GetAsyncKeyState(VK_LEFT) & 0x8000) != 0;
-							bRight = (::GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0;
-							if ((bUp != false) || (bDown != false) || (bLeft != false) || (bRight != false))
-								{
-								PanXbase=0;
-								PanYbase=0;
-								DoStopPan=0;
-								}
-							}
-
-						if (DoStopPan=1)
-							{
-							bUp = (::GetAsyncKeyState(VK_UP) & 0x8000) != 0;
-							bDown = (::GetAsyncKeyState(VK_DOWN) & 0x8000) != 0;
-							bLeft = (::GetAsyncKeyState(VK_LEFT) & 0x8000) != 0;
-							bRight = (::GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0;
-							if ((bUp == false) && (bDown == false) && (bLeft == false) && (bRight == false))
-								{
-								::timeEndPeriod(1);
-								m_bPanTimerActive = false;
-								break;
-								}
-							}
-						*/
 						}
 					else
 						{
 						//PanY ist die Pixelzahl des gezoomten bildes!
 						iRealHeight = INT (m_dZoom * (m_pCurrentImage->OrigHeight()));
 						iRealWidth = INT (m_dZoom * (m_pCurrentImage->OrigWidth()));
-
-						/*
-						if ((iRealHeight > m_clientRect.Height()) && (iRealWidth <= m_clientRect.Width()) && (m_bMangaMode == true))
-							{
-							if ((((bLeft == true) && (bRight == false)) || ((bUp == true) && (bDown == false))) && (PanYbase<10))
-								PanYbase++;
-
-							if ((((bLeft == false) && (bRight == true)) || ((bUp == false) && (bDown == true))) && (PanYbase>-10))
-								PanYbase--;
-							}
-						else
-							{
-							if ((bUp == true) && (bDown == false) && (PanYbase<10))
-								PanYbase++;
-							else if ((bUp == false) && (bDown == true) && (PanYbase>-10))
-								PanYbase--;
-
-							if ((bLeft == true) && (bRight == false) && (PanXbase<10))
-								PanXbase++;
-							else if (( bLeft == false) && (bRight == true) && (PanXbase>-10))
-								PanXbase--;
-							}
-						*/
 
 						if ((iRealHeight > m_clientRect.Height()) && (iRealWidth <= m_clientRect.Width()) && (m_bMangaMode == true))
 							{
@@ -1612,7 +1360,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 						if (PerformPan(PanX,PanY,false) == true)
 							{
 							//this->Invalidate(FALSE);
-							this->UpdateWindow();
+							this->UpdateWindow();	// this will force to wait until really redrawn, preventing to process images but do not show them
 
 							MSG msg;
 							while (::PeekMessage(&msg, this->m_hWnd, 0, 0, PM_REMOVE));
@@ -1738,7 +1486,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 							if (PerformPan(PanX,PanY,false) == true)
 								{
 								//this->Invalidate(FALSE);
-								this->UpdateWindow();
+								this->UpdateWindow();	// this will force to wait until really redrawn, preventing to process images but do not show them
 								}
 
 							MSG msg;
@@ -1870,7 +1618,6 @@ void CMainDlg::ExecuteCommand(int nCommand)
 				m_pCurrentImage->Rotate(nRotationDelta);
 				m_dZoom = -1;
 				this->Invalidate(FALSE);
-				//this->UpdateWindow();
 				}
 			break;
 		case IDM_MIRROR_H:
@@ -1879,7 +1626,6 @@ void CMainDlg::ExecuteCommand(int nCommand)
 				{
 				m_pCurrentImage->Mirror(nCommand == IDM_MIRROR_H);
 				this->Invalidate(FALSE);
-				//this->UpdateWindow();
 				}
 			break;
 		case IDM_AUTO_CORRECTION:
@@ -1902,7 +1648,6 @@ void CMainDlg::ExecuteCommand(int nCommand)
 				{
 				m_dZoom = -1.0;
 				this->Invalidate(FALSE);
-				//this->UpdateWindow();
 
 				if (m_bSpanVirtualDesktop)
 					{
@@ -2146,22 +1891,15 @@ void CMainDlg::GotoImage(EImagePosition ePos, int nFlags)
     if (m_pCurrentImage != NULL && m_pCurrentImage->IsAnimation())
 		{
         if (m_bIsAnimationPlaying)
-			{
             AdjustAnimationFrameTime();
-			}
 		else
-			{
             StartAnimation();
-			}
 		}
 
 	m_dLastImageDisplayTime = Helpers::GetExactTickCount();
-    if (!(ePos == POS_NextSlideShow && UseSlideShowTransitionEffect()))
-		{
-	    this->Invalidate(FALSE);
-		// this will force to wait until really redrawn, preventing to process images but do not show them
-	    this->UpdateWindow();
-		}
+
+	this->Invalidate(FALSE);
+	this->UpdateWindow();	// this will force it to wait until really redrawn, preventing processing images but do showing them
 
 	// remove key messages accumulated so far
 	if (!(nFlags & NO_REMOVE_KEY_MSG))
@@ -2330,7 +2068,6 @@ void CMainDlg::PerformZoom(double dValue, bool bZoomToMouse)
 		m_bInLowQTimer = true;
 		StartLowQTimer(ZOOM_TIMEOUT);
 		this->Invalidate(FALSE);
-	    //this->UpdateWindow();
 
 		if ((m_bMangaMode == true) && (m_bZoomMode == false))
 			{
@@ -2584,7 +2321,6 @@ void CMainDlg::StartMovieMode(double dFPS)
 	m_bMovieMode = true;
 	StartSlideShowTimer(Helpers::RoundToInt(1000.0/dFPS));
     this->Invalidate(FALSE);
-	//this->UpdateWindow();
 	}
 
 void CMainDlg::StopMovieMode()
@@ -2595,7 +2331,6 @@ void CMainDlg::StopMovieMode()
 		m_bMovieMode = false;
 		StopSlideShowTimer();
 		this->Invalidate(FALSE);
-	    //this->UpdateWindow();
 		}
 	}
 
