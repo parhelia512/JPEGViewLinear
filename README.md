@@ -8,7 +8,7 @@ It also incorporates some of the fixes from the more recent fork by Kevin M at h
 * Up- and downsamples images in linear space. This is crucial for lineart, where lines and edges otherwise come out too dark and screentones show moiree.
 * The available downsampling filters have been modified to offer the well known 'Hermite', 'Mitchell', 'Catrom' and 'Lanczos2' and give reference output identical to ImageMagick.
 * Special handling for comic/manga viewing. Files hat have '\\Comics\\' or '\\Manga\\' in their filepath will be zoomed/scrolled with page reading purposes in mind.
-* Minimalist inferface. Uses mouse/keyboard for navigation. Press 'F1' to show key bindings.
+* Minimalist interface. Uses mouse/keyboard for navigation. Press 'F1' to show key bindings.
 * Any image editing functionality has been removed. JPEGViewLinear is a pure viewer, focusing on speed and maximum image quality.
 
 ## Why?
