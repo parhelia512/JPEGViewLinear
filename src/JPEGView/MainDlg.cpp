@@ -165,7 +165,7 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	
 	if (sCurrentFileName != NULL)
 		{
-		if (StrStrI(sCurrentFileName,TEXT("\\manga\\")))
+		if ((StrStrI(sCurrentFileName,TEXT("\\manga\\"))) || (StrStrI(sCurrentFileName,TEXT("\\comics\\"))))
 			m_bFullScreenMode = true;
 		else
 			m_bFullScreenMode = false;
@@ -249,7 +249,7 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 	if (m_bShowHelp)
 		{
 		dc.FillRect(&m_clientRect, backBrush);
-		_stprintf_s(infoText,4096,_T("General\n\n   F1          Show key help\n   I           Show general info\n   F5          Reload image\n\n   Esc         Close viewer\n   M           Minimize viewer\n   Return      Toggle display: Fullscreen <-> Window\n\n   Ctrl + E    Edit image in default application\n   Ctrl + G    Edit image in GIMP\n   Ctrl + L    Open image directory in file manager\n   Del         Delete image\n\nNavigation\n\n   Home        Go to first image in folder\n   End         Go to last image in folder\n\n   Page Up     Pan up\n   Page Down   Pan down\n\n   Backspace   Move to previous image\n   Space       Move to next image\n\n   Up          Pan up / Move to previous image (Manga Mode only)\n   Down        Pan down / Move to next image (Manga Mode only)\n   Left        Pan left / Move to previous image\n   Right       Pan right / Move to next image\n\n   Left mouse  Move to previous image\n   Right mouse Move to next image\n\n   Wheel Up    Move to previous image\n   Wheel Down  Move to next image\n   Z           Toggle sorting: By Name <-> Random\n   A           Switch to alternative language folder (en|de|ch|ko)\n\nDisplay\n\n   +           Zoom in\n   -           Zoom out\n   F           Toggle display mode: 100%% <-> Zoomed to window\n   H           Mirror image horizontally\n   V           Mirror image vertically\n   L           Rotate image clockwise\n   R           Rotate image counterclockwise"));
+		_stprintf_s(infoText,4096,_T("General                                                                                 Mouse\n\n   F1          Show key help                                                               Left Button            Move to previous image\n   I           Show image info                                                             Right Button           Move to next image\n   F5          Reload image                                                                Wheel Up/Down          Pan up/down OR move to previous/next image\n                                                                                           Ctrl + Wheel           Pan up/down\n   Esc         Close viewer                                                                Shift + Wheel          Pan left/right\n   M           Minimize viewer                                                             Ctrl + Shift + Wheel   Zoom in/out\n   Return      Toggle display: Fullscreen <-> Window\n\n   Ctrl + E    Edit image in default application\n   Ctrl + L    Open image directory in file manager\n   Del         Delete image\n\nNavigation\n\n   Left        Scroll left / Move to previous image\n   Right       Scroll right / Move to next image\n\n   Up          Scroll up     (Comic/Manga mode: Move to previous image)\n   Down        Scroll down   (Comic/Manga mode: Move to next image)\n\n   Backspace   Move to previous image\n   Space       Move to next image\n\n   Page Up     Pan up\n   Page Down   Pan down\n\n   Home        Go to first image in folder\n   End         Go to last image in folder\n\n   Z           Toggle sort order: By Name <-> Random\n   A           Switch to same file in alternative language folder (en|de|ch|ko)\n\nDisplay\n\n   +           Zoom in\n   -           Zoom out\n   F           Toggle Zoom: 100%% <-> Fit Window\n   1           Zoom 50%%\n   2           Zoom 25%% \n   H           Mirror image horizontally\n   V           Mirror image vertically\n   L           Rotate image clockwise\n   R           Rotate image counterclockwise\n"));
 
 		HFONT hFont;
 		int FontSize = 26;
@@ -257,12 +257,12 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 		CRect testRect(0, 0, 4096, 4096);
 		CSize testRectHeight;
 
-		while (FontSize > 8)
+		while (FontSize > 3)
 			{
 			hFont = CreateFont(FontSize,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("CONSOLAS"));
 			dc.SelectFont(hFont);
-			::DrawTextW(dc,infoText,::_tcslen(infoText),&testRect,DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK | DT_CALCRECT);
-			if (testRect.Height() < m_clientRect.Height())
+			::DrawTextW(dc,infoText,::_tcslen(infoText),&testRect,DT_LEFT | DT_EXTERNALLEADING | DT_NOPREFIX | DT_CALCRECT);
+			if ((testRect.Height() < m_clientRect.Height()-30) && (testRect.Width() < m_clientRect.Width()-30))
 				break;
 			
 			DeleteObject(hFont);
@@ -273,7 +273,7 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 		dc.SetBkMode(OPAQUE);	// OPAQUE or TRANSPARENT
 		dc.SetTextColor(RGB(255,255,255));
 		CRect rectText(15, 15, m_clientRect.Width(), m_clientRect.Height());
-		::DrawText(dc,infoText,::_tcslen(infoText),&rectText,DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK | DT_NOPREFIX);
+		::DrawText(dc,infoText,::_tcslen(infoText),&rectText,DT_LEFT | DT_EXTERNALLEADING | DT_NOPREFIX);
 		DeleteObject(hFont);
 		}
 	else if (m_sStartupFile.IsEmpty() && m_pCurrentImage == NULL)
@@ -558,14 +558,47 @@ LRESULT CMainDlg::OnMouseMove(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, B
 LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 	bool bCtrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
+	bool bShift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
 	int nDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 
-	if (bCtrl)
+	if (bCtrl && bShift)	// Zoom
 		{
 		MouseOn();
 		PerformZoom(double(nDelta)/WHEEL_DELTA, m_bMouseOn);
 		}
-	else
+	else if (bShift)		// Pan horizontally
+		{
+		if (m_pCurrentImage != NULL)
+			{
+			if (nDelta < 0)
+				{
+				if (PerformPan(-PAN_STEP, 0, false) == true)
+					this->Invalidate(FALSE);
+				}
+			else if (nDelta > 0)
+				{
+				if (PerformPan(PAN_STEP, 0, false) == true)
+					this->Invalidate(FALSE);
+				}
+			}
+		}
+	else if (bCtrl)		// Pan vertically
+		{
+		if (m_pCurrentImage != NULL)
+			{
+			if (nDelta < 0)
+				{
+				if (PerformPan(0, -PAN_STEP, false) == true)
+					this->Invalidate(FALSE);
+				}
+			else if (nDelta > 0)
+				{
+				if (PerformPan(0, PAN_STEP, false) == true)
+					this->Invalidate(FALSE);
+				}
+			}
+		}
+	else		// Pan vertically (if image is higher than window) OR go to previous/next image
 		{
 		if (m_pCurrentImage != NULL)
 			{
@@ -573,7 +606,7 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 				{
 				if (m_bMangaMode == true)
 					{
-					if (PerformPan(0, -PAN_STEP, false) == true)	// m_virtualImageSize.cy/25
+					if (PerformPan(0, -PAN_STEP, false) == true)
 						{
 						this->Invalidate(FALSE);
 						}
@@ -583,7 +616,7 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 					unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
 					if (iRealHeight > m_clientRect.Height())
 						{
-						if (PerformPan(0, -PAN_STEP, false) == true)	// m_virtualImageSize.cy/25
+						if (PerformPan(0, -PAN_STEP, false) == true)
 							{
 							this->Invalidate(FALSE);
 							}
@@ -1019,55 +1052,6 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			StartLowQTimer(ZOOM_TIMEOUT);
 
 			this->Invalidate(FALSE);
-			}
-		}
-	else if (bCtrl && wParam == 'G')
-		{
-		LPCTSTR sCurrentFileName = CurrentFileName();
-		if (sCurrentFileName != NULL)
-			{
-			TCHAR AppPath[MAX_PATH];
-			::GetModuleFileName(NULL,AppPath,MAX_PATH);
-			PathRemoveFileSpec(AppPath);
-
-			TCHAR AHKpath[MAX_PATH];
-			if (Is64BitOS())
-				PathCombine(AHKpath,AppPath,TEXT("..\\AHK\\AutoHotkey_x64.exe"));
-			else
-				PathCombine(AHKpath,AppPath,TEXT("..\\AHK\\AutoHotkey_x32.exe"));
-
-			TCHAR ScriptPath[MAX_PATH];
-			PathCombine(ScriptPath,AppPath,TEXT("..\\_Links\\D\\Gimp [Image Editor].vlg"));
-
-			if ((::PathFileExists(AHKpath))&&(::PathFileExists(ScriptPath)))
-				{
-				if (m_bFullScreenMode)
-					{
-					m_bFullScreenMode = !m_bFullScreenMode;
-					CRect windowRect;
-					this->SetWindowLongW(GWL_STYLE, this->GetWindowLongW(GWL_STYLE) | WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-					if (::IsRectEmpty(&(m_storedWindowPlacement2.rcNormalPosition)))
-						{
-						// never set to window mode before, use default position
-						windowRect = CMultiMonitorSupport::GetDefaultWindowRect();
-						this->SetWindowPos(HWND_TOP, windowRect.left, windowRect.top, windowRect.Width(), windowRect.Height(), SWP_NOZORDER | SWP_NOCOPYBITS);
-						}
-					else
-						{
-						m_storedWindowPlacement2.flags = this->SetWindowPlacement(&m_storedWindowPlacement2);
-						}
-					this->MouseOn();
-
-					m_dZoom = -1;
-					m_bInLowQTimer = true;
-					StartLowQTimer(ZOOM_TIMEOUT);
-					this->SetWindowPos(NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
-					}
-
-				TCHAR sParameters[1024];
-				wsprintf(sParameters,TEXT("\"%s\" \"%s\""),ScriptPath,sCurrentFileName);
-				::ShellExecute(m_hWnd,_T("open"),AHKpath,sParameters,NULL,SW_SHOW);
-				}
 			}
 		}
 	else if (wParam == 'H')
@@ -2257,7 +2241,7 @@ CProcessParams CMainDlg::CreateProcessParams(bool ToPreviousImage)
 	LPCTSTR sCurrentFileName = CurrentFileName();
 	if (sCurrentFileName != NULL)
 		{
-		if (StrStrI(sCurrentFileName,TEXT("\\manga\\")))
+		if ((StrStrI(sCurrentFileName,TEXT("\\manga\\"))) || (StrStrI(sCurrentFileName,TEXT("\\comics\\"))))
 			{
 			if (m_bMangaMode == false)
 				m_bZoomMode = false;			// reset ZoomMode if we switch from eBooks to normal images
@@ -2265,9 +2249,9 @@ CProcessParams CMainDlg::CreateProcessParams(bool ToPreviousImage)
 			m_bMangaMode = true;
 
 			if (ToPreviousImage == false)
-				m_offsets = CPoint(-65000,65000);	// manga mode: focus top right (RTL)
+				m_offsets = CPoint(-65000,65000);	// comic/manga mode: focus top right (RTL). TODO: implement LTR option.
 			else
-				m_offsets = CPoint(65000,-65000);	// manga mode: focus bottom left (RTL)
+				m_offsets = CPoint(65000,-65000);	// comic/manga mode: focus bottom left (RTL). TODO: implement LTR option.
 
 			m_offsets_custom = m_offsets;
 			}
@@ -2381,7 +2365,7 @@ void CMainDlg::SaveBookmark()
 
 	if (sCurrentFileName != NULL)
 		{
-		if (StrStrI(sCurrentFileName,TEXT("\\manga\\")))
+		if (StrStrI(sCurrentFileName,TEXT("\\manga\\"))) || (StrStrI(sCurrentFileName,TEXT("\\comics\\")))
 			{
 			TCHAR AppPath[MAX_PATH];
 			TCHAR INIpath[MAX_PATH];
