@@ -27,9 +27,9 @@ JPEG, PNG, WEBP, GIF, BMP, TIFF.
 
 ## Changelog
 
-* 1.03 Improved mouse wheel panning button combinations. Added "\comics\" beside "\manga\" to mark paths to contain manga/comics files, using optimized display/navigation for that type of media.
+* 1.0.3 Improved mouse wheel panning button combinations. Added "\comics\" beside "\manga\" to mark paths to contain manga/comics files, using optimized display/navigation for that type of media.
 
-* 1.02 Pressing the 'F1' key will now display the available keyboard shortcuts.
+* 1.0.2 Pressing the 'F1' key will now display the available keyboard shortcuts.
 The application now uses the default icon when no images are loaded.
 The application now reacts to drag'n'drop.
 The application now shows a helpful message when launched without specifying any files/folders to open.
@@ -39,4 +39,4 @@ The application now uses the default icon when no images are loaded.
 The application now reacts to drag'n'drop.
 The application now shows a helpful message when launched without specifying any files/folders to open.
 
-* 1.01 Pressing the 'I' key will now display various info on current image and processing parameters.
+* 1.0.1 Pressing the 'I' key will now display various info on current image and processing parameters.
