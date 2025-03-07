@@ -1664,6 +1664,8 @@ void CMainDlg::ExecuteCommand(int nCommand)
 					m_storedWindowPlacement2.flags = this->SetWindowPlacement(&m_storedWindowPlacement2);
 					}
 
+				UpdateWindowTitle(true);
+			
 				this->MouseOn();
 				}
 			else
@@ -2351,7 +2353,7 @@ void CMainDlg::AfterNewImageLoaded()
 	{
 	if (m_pCurrentImage != NULL)
 		{
-		UpdateWindowTitle();
+		UpdateWindowTitle(false);
 		m_bHQResampling = true;
 		m_pDirectoryWatcher->SetCurrentFile(CurrentFileName());
 		}
@@ -2522,10 +2524,10 @@ LPCTSTR CMainDlg::CurrentFileName()
 		}
 	}
 
-void CMainDlg::UpdateWindowTitle()
+void CMainDlg::UpdateWindowTitle(bool bForce)
 	{
-	static HICON hIconBigPrevious = NULL;
-	static HICON hIconSmallPrevious = NULL;
+	HICON hIconBigPrevious = NULL;
+	HICON hIconSmallPrevious = NULL;
 	HICON hIconBig = NULL;
 	HICON hIconSmall = NULL;
 	SHFILEINFO shfi;
@@ -2534,28 +2536,26 @@ void CMainDlg::UpdateWindowTitle()
 
 	if (sCurrentFileName == NULL)
 		{
-		if (lstrcmpi(_T("JPEGView"),s_PrevTitleText) != 0)
+		if ((lstrcmpi(_T("JPEGView"),s_PrevTitleText) != 0) || (bForce == true))
 			{
 			_stprintf_s(s_PrevTitleText, MAX_PATH, _T("%s"),_T("JPEGView"));
 			this->SetWindowText(_T("JPEGView"));
 
 			hIconBig = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXICON),::GetSystemMetrics(SM_CYICON),LR_VGACOLOR);
-			hIconSmall = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXSMICON),::GetSystemMetrics(SM_CYSMICON),LR_VGACOLOR);
-
 			if (hIconBig != NULL)
-				::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_BIG,(LPARAM)hIconBig);
-			if (hIconSmall != NULL)
-				::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIconSmall);
-
-			if (hIconBigPrevious != NULL)
 				{
-				DestroyIcon(hIconBigPrevious);
-				hIconBigPrevious = hIconBig;
+				hIconBigPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_BIG,(LPARAM)hIconBig);
+				if (hIconBigPrevious != NULL)
+					DestroyIcon(hIconBigPrevious);
 				}
-			if (hIconSmallPrevious != NULL)
+
+
+			hIconSmall = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXSMICON),::GetSystemMetrics(SM_CYSMICON),LR_VGACOLOR);
+			if (hIconSmall != NULL)
 				{
-				DestroyIcon(hIconSmallPrevious);
-				hIconSmallPrevious = hIconSmall;
+				hIconSmallPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIconSmall);
+				if (hIconSmallPrevious != NULL)
+					DestroyIcon(hIconSmallPrevious);
 				}
 			}
 		}
@@ -2570,7 +2570,7 @@ void CMainDlg::UpdateWindowTitle()
 		TCHAR *pExt = NULL;								// TCHAR = WCHAR on unicode
 		pExt = PathFindExtension(sCurrentFileName);		// input: PTSTR, output: PTSTR
 
-		if (lstrcmpi(pExt,s_PrevFileExt) != 0)
+		if ((lstrcmpi(pExt,s_PrevFileExt) != 0) || (bForce == true))
 			{
 			if (*pExt != '\0')
 				{
@@ -2589,23 +2589,23 @@ void CMainDlg::UpdateWindowTitle()
 
 			if (hIconBig == NULL)
 				hIconBig = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXICON),::GetSystemMetrics(SM_CYICON),LR_VGACOLOR);
+
+			if (hIconBig != NULL)
+				{
+				hIconBigPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_BIG,(LPARAM)hIconBig);
+				if ((hIconBigPrevious != NULL) && (hIconBigPrevious != hIconBig))
+					DestroyIcon(hIconBigPrevious);
+				}
+
+
 			if (hIconSmall == NULL)
 				hIconSmall = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXSMICON),::GetSystemMetrics(SM_CYSMICON),LR_VGACOLOR);
 
-			if (hIconBig != NULL)
-				::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_BIG,(LPARAM)hIconBig);
 			if (hIconSmall != NULL)
-				::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIconSmall);
-
-			if (hIconBigPrevious != NULL)
 				{
-				DestroyIcon(hIconBigPrevious);
-				hIconBigPrevious = hIconBig;
-				}
-			if (hIconSmallPrevious != NULL)
-				{
-				DestroyIcon(hIconSmallPrevious);
-				hIconSmallPrevious = hIconSmall;
+				hIconSmallPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIconSmall);
+				if ((hIconSmallPrevious != NULL) && (hIconSmallPrevious != hIconSmall))
+					DestroyIcon(hIconSmallPrevious);
 				}
 			}
 		}

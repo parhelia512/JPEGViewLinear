@@ -327,7 +327,7 @@ void* CJPEGImage::Resample(CSize fullTargetSize, CSize clippingSize, CPoint targ
 
 	/*GF*/	TCHAR debugtext[512];
 
-	/*GF*/	swprintf(debugtext,255,TEXT("eResizeType: %d",eResizeType));
+	/*GF*/	swprintf(debugtext,255,TEXT("eResizeType: %d"),eResizeType);
 	/*GF*/	::OutputDebugStringW(debugtext);
 				
 	if (GetProcessingFlag(eProcFlags, PFLAG_HighQualityResampling)

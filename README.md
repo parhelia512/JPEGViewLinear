@@ -27,6 +27,8 @@ JPEG, PNG, WEBP, GIF, BMP, TIFF.
 
 ## Changelog
 
+* 1.0.4 Fixed missing program icon when switching from fullscreen to windowed mode.
+
 * 1.0.3 Improved mouse wheel panning button combinations. Added "\\comics\\" beside "\\manga\\" as recognized marker for paths that contain manga/comics files, using optimized display/navigation for that type of media.
 
 * 1.0.2 Pressing the 'F1' key will now display the available keyboard shortcuts.

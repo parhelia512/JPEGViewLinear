@@ -115,7 +115,7 @@ public:
 	const CRect& MonitorRect() { return m_monitorRect; }
 	const CSize& VirtualImageSize() { return m_virtualImageSize; }
 
-	void UpdateWindowTitle();
+	void UpdateWindowTitle(bool bForce);
 	void MouseOff();
 	void MouseOn();
 	void GotoImage(EImagePosition ePos);
