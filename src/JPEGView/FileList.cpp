@@ -9,9 +9,9 @@
 // Helpers
 ///////////////////////////////////////////////////////////////////////////////////
 
-// static intializers
+// static initializers
 Helpers::ESorting CFileDesc::sm_eSorting = Helpers::FS_FileName;
-bool CFileDesc::sm_bSortUpcounting = true;
+bool CFileDesc::sm_bSortAscending = true;
 Helpers::ENavigationMode CFileList::sm_eMode = Helpers::NM_LoopDirectory;
 
 // Helper to add the current file of filefind object to the list
@@ -79,7 +79,7 @@ CFileDesc::CFileDesc(const CString & sName, const FILETIME* lastModTime, const F
 	m_fileSize = fileSize;
 }
 
-bool CFileDesc::SortUpcounting(const CFileDesc& other) const {
+bool CFileDesc::SortAscending(const CFileDesc& other) const {
 	if (sm_eSorting == Helpers::FS_CreationTime || sm_eSorting == Helpers::FS_LastModTime) {
 		const FILETIME* pTime = (sm_eSorting == Helpers::FS_LastModTime) ? &m_lastModTime : &m_creationTime;
 		const FILETIME* pTimeOther = (sm_eSorting == Helpers::FS_LastModTime) ? &(other.m_lastModTime) : &(other.m_creationTime);
@@ -106,7 +106,7 @@ bool CFileDesc::SortUpcounting(const CFileDesc& other) const {
 }
 
 bool CFileDesc::operator < (const CFileDesc& other) const {
-	return SortUpcounting(other) ^ (!sm_bSortUpcounting);
+	return SortAscending(other) ^ (!sm_bSortAscending);
 }
 
 
@@ -124,9 +124,10 @@ void CFileDesc::SetModificationDate(const FILETIME& lastModDate) {
 ///////////////////////////////////////////////////////////////////////////////////
 
 // image file types supported internally (there are additional endings for RAW and WIC - these come from INI file)
-static const int cnNumEndingsInternal = 9;
-static const TCHAR* csFileEndingsInternal[cnNumEndingsInternal] = {_T("jpg"), _T("jpeg"), _T("bmp"), _T("png"), 
-	_T("tif"), _T("tiff"), _T("gif"), _T("webp"), _T("tga")};
+// NOTE: when adding more supported filetypes, update installer to add another extension for "SupportedTypes"
+static const int cnNumEndingsInternal = 18;
+static const TCHAR* csFileEndingsInternal[cnNumEndingsInternal] = {_T("jpg"), _T("jpeg"), _T("jfif"), _T("bmp"), _T("png"),
+	_T("tif"), _T("tiff"), _T("gif"), _T("webp"), _T("jxl"), _T("avif"), _T("heif"), _T("heic"), _T("tga"), _T("qoi"), _T("psd"), _T("psb"), _T("ico")};
 // supported camera RAW formats
 static const TCHAR* csFileEndingsRAW = _T("*.pef;*.dng;*.crw;*.nef;*.cr2;*.mrw;*.rw2;*.orf;*.x3f;*.arw;*.kdc;*.nrw;*.dcr;*.sr2;*.raf");
 
@@ -176,21 +177,22 @@ static LPCTSTR* GetSupportedFileEndingList() {
 		for (nNumEndings = 0; nNumEndings < cnNumEndingsInternal; nNumEndings++) {
 			sFileEndings[nNumEndings] = csFileEndingsInternal[nNumEndings];
 		}
-
-		//LPCTSTR sFileEndingsWIC = CSettingsProvider::This().FilesProcessedByWIC();
-		//if (_tcslen(sFileEndingsWIC) > 2 && WICPresentGuarded()) {
-		//	ParseAndAddFileEndings(sFileEndingsWIC);
-		//}
-		//ParseAndAddFileEndings(CSettingsProvider::This().FileEndingsRAW());
+/*
+		LPCTSTR sFileEndingsWIC = CSettingsProvider::This().FilesProcessedByWIC();
+		if (_tcslen(sFileEndingsWIC) > 2 && WICPresentGuarded()) {
+			ParseAndAddFileEndings(sFileEndingsWIC);
+		}
+		ParseAndAddFileEndings(CSettingsProvider::This().FileEndingsRAW());
+*/
 	}
 	return sFileEndings;
 }
 
 CFileList::CFileList(const CString & sInitialFile, CDirectoryWatcher & directoryWatcher, 
-	Helpers::ESorting eInitialSorting, bool isSortedUpcounting, bool bWrapAroundFolder, int nLevel, bool forceSorting)
+	Helpers::ESorting eInitialSorting, bool isSortedAscending, bool bWrapAroundFolder, int nLevel, bool forceSorting)
 	: m_directoryWatcher(directoryWatcher) {
 
-	CFileDesc::SetSorting(eInitialSorting, isSortedUpcounting);
+	CFileDesc::SetSorting(eInitialSorting, isSortedAscending);
 	m_bDeleteHistory = true;
 	m_bWrapAroundFolder = bWrapAroundFolder;
 	m_sInitialFile = sInitialFile;
@@ -203,12 +205,12 @@ CFileList::CFileList(const CString & sInitialFile, CDirectoryWatcher & directory
 	CString sExtensionInitialFile = (nPos > 0) ? sInitialFile.Right(sInitialFile.GetLength()-nPos-1) : _T("");
 	sExtensionInitialFile.MakeLower();
 	bool bImageFile = !bIsDirectory && IsImageFile(sExtensionInitialFile);
-//	if (!bIsDirectory && !bImageFile && !sExtensionInitialFile.IsEmpty() && _tcsstr(csFileEndingsRAW, _T("*.") + sExtensionInitialFile) != NULL) {
-//		// initial file is a supported camera raw file but was excluded in INI file - add temporarily to file ending list
-//		ParseAndAddFileEndings(_T("*.") + sExtensionInitialFile);
-//		CSettingsProvider::This().AddTemporaryRAWFileEnding(sExtensionInitialFile);
-//		bImageFile = true;
-//	}
+	if (!bIsDirectory && !bImageFile && !sExtensionInitialFile.IsEmpty() && _tcsstr(csFileEndingsRAW, _T("*.") + sExtensionInitialFile) != NULL) {
+		// initial file is a supported camera raw file but was excluded in INI file - add temporarily to file ending list
+		ParseAndAddFileEndings(_T("*.") + sExtensionInitialFile);
+		CSettingsProvider::This().AddTemporaryRAWFileEnding(sExtensionInitialFile);
+		bImageFile = true;
+	}
 	m_bIsSlideShowList = !bIsDirectory && !bImageFile && TryReadingSlideShowList(sInitialFile);
 	m_nMarkedIndexShow = -1;
 
@@ -250,20 +252,6 @@ CString CFileList::GetSupportedFileEndings() {
 		if (i+1 < nNumEndings) sList += _T(";");
 	}
 	return sList;
-}
-
-// Gernot: Custom function
-void CFileList::ListFileDelete(LPCTSTR sFileName) {
-	// Delete file out of list directly without checking all files' attributes
-
-	std::list<CFileDesc>::iterator iter;
-
-	for (iter = m_fileList.begin( ); iter != m_fileList.end( ); iter++ ) {		
-		if (_tcsicmp((LPCTSTR)sFileName, iter->GetName()) == 0) {
-			iter = m_fileList.erase(iter);
-			break;
-		}
-	}
 }
 
 void CFileList::Reload(LPCTSTR sFileName, bool clearForwardHistory) {
@@ -332,8 +320,7 @@ bool CFileList::DeleteFile(LPCTSTR fileNameWithPath) const {
 		_tcscpy(fileName, fileNameWithPath);
 		fileName[_tcslen(fileName) + 1] = 0;
 
-		SHFILEOPSTRUCT fileOp;
-		memset(&fileOp, 0, sizeof(SHFILEOPSTRUCT));
+		SHFILEOPSTRUCT fileOp{ 0 };
 		fileOp.hwnd = NULL;
 		fileOp.wFunc = FO_DELETE;
 		fileOp.pFrom = fileName;
@@ -466,26 +453,7 @@ CFileList* CFileList::AwayFromCurrent() {
 		return Next();
 	}
 }
-/*
-// Gernot: Custom function used by custom SaveBookmark()
-bool CFileList::IsEndpoint() {
-	m_nMarkedIndexShow = -1;
 
-	if (m_iter == m_fileList.begin())
-		return true;
-
-	if (m_fileList.size() > 0)
-		{
-		std::list<CFileDesc>::iterator iterTemp = m_iter;
-		iterTemp++;
-		if (iterTemp == m_fileList.end()) {
-			return true;
-		}
-	}
-
-	return false;
-}
-*/
 LPCTSTR CFileList::Current() const {
 	if (m_iter != m_fileList.end()) {
 		return m_iter->GetName();
@@ -550,10 +518,10 @@ LPCTSTR CFileList::PeekNextPrev(int nIndex, bool bForward, bool bToggle) {
 	}
 }
 
-void CFileList::SetSorting(Helpers::ESorting eSorting, bool sortUpcounting) {
-	if (eSorting != CFileDesc::GetSorting() || sortUpcounting != CFileDesc::IsSortedUpcounting()) {
+void CFileList::SetSorting(Helpers::ESorting eSorting, bool sortAscending) {
+	if (eSorting != CFileDesc::GetSorting() || sortAscending != CFileDesc::IsSortedAscending()) {
 		CString sThisFile = (m_iter != m_fileList.end()) ? m_iter->GetName() : "";
-		CFileDesc::SetSorting(eSorting, sortUpcounting);
+		CFileDesc::SetSorting(eSorting, sortAscending);
 		m_fileList.sort();
 		m_iter = FindFile(sThisFile);
 		m_iterStart = m_bWrapAroundFolder ? m_iter : m_fileList.begin();
@@ -564,8 +532,8 @@ Helpers::ESorting CFileList::GetSorting() const {
 	return CFileDesc::GetSorting();
 }
 
-bool CFileList::IsSortedUpcounting() const {
-	return CFileDesc::IsSortedUpcounting();
+bool CFileList::IsSortedAscending() const {
+	return CFileDesc::IsSortedAscending();
 }
 
 void CFileList::SetNavigationMode(Helpers::ENavigationMode eMode) {
@@ -833,7 +801,7 @@ CFileList* CFileList::TryCreateFileList(const CString& directory, int nNewLevel)
 		pList = pList->m_prev;
 	}
 
-	CFileList* pNewList = new CFileList(directory, m_directoryWatcher, CFileDesc::GetSorting(), CFileDesc::IsSortedUpcounting(), m_bWrapAroundFolder, nNewLevel);
+	CFileList* pNewList = new CFileList(directory, m_directoryWatcher, CFileDesc::GetSorting(), CFileDesc::IsSortedAscending(), m_bWrapAroundFolder, nNewLevel);
 	if (pNewList->m_fileList.size() > 0) {
 		pNewList->m_prev = this;
 		m_next = pNewList;
@@ -892,136 +860,174 @@ bool CFileList::TryReadingSlideShowList(const CString & sSlideShowFile) {
 		return false;
 	}
 	// Try to detect if this is a UTF16 Unicode text file or a ANSI or UTF-8 coded file
-	const int NUMPROBE = 8;
+	const int NUMPROBE = 64;
 	uint8 buff[NUMPROBE];
-
+	bool bUnicode;
+	bool bUTF8Marker = false;
+	int nSeekPos = 0;
 	int nRealProbe = (int)fread(buff, 1, NUMPROBE, fptr);
-	if (nRealProbe < 4)
-		{
-		fclose(fptr);
-		return false;
-		}
-	else
-		{
-		if (buff[0] == 0xFF && buff[1] == 0xFE)
-			{
-			// UTF-16 LE
-			}
-		else if (buff[0] == 0xEF && buff[1] == 0xBB && buff[2] == 0xBF)
-			{
-			// UTF-8
-
-			fclose(fptr);
-			if ((fptr = _tfopen(sSlideShowFile,_T("r, ccs=UTF-8"))) == NULL)
-				{
-				return false;
+	if (nRealProbe < 16) {
+		// file is too short for a good guess
+		bUnicode = false;
+	} else {
+		if (buff[0] == 0xFF && buff[1] == 0xFE) {
+			// Unicode byte order marker, only supporting little endian unicode files
+			bUnicode = true;
+			nSeekPos = 2;
+		} else if (buff[0] == 0xEF && buff[1] == 0xBB && buff[2] == 0xBF) {
+			// UTF-8 encoded text file
+			bUTF8Marker = true;
+		} else {
+			// Use a heuristic in case the BOM is missing
+			int nGood = 0;
+			for (int i = 0; i < nRealProbe; i++) {
+				if (i & 1) {
+					if (buff[i] == 0) nGood++;
+				} else {
+					if (buff[i] != 0) nGood++;
 				}
 			}
-		else
-			{
-			fclose(fptr);
-			return false;
-			}
+			bUnicode = nGood > nRealProbe*2/3;
 		}
+	}
 
-	int nSeekPos = 0;
-	const int FILE_BUFFER_SIZE = 64*1024*1024;	// cannot read files > 64 MiB for simplicity
+	bool bIsUTF8EncodedXML = strstr((char*)buff, "encoding=\"utf-8\"") != NULL;
+	if (bUTF8Marker || bIsUTF8EncodedXML) {
+		// UTF-8 encoded text file, open the file in UTF-8 mode, it will be read as Unicode
+		fclose(fptr);
+		if ((fptr = _tfopen(sSlideShowFile,_T("r, ccs=UTF-8"))) == NULL) {
+			return false;
+		}
+		nSeekPos = bIsUTF8EncodedXML ? max(0, (int)(strchr((char*)buff, '<') - (char*)buff)) : 3;
+		bUnicode = true;
+	}
+
+	int FILE_BUFFER_SIZE = CSettingsProvider::This().MaxSlideShowFileListSize() * 1024;
 	char* fileBuff = new char[FILE_BUFFER_SIZE];
 	char* fileBuffOrig = fileBuff;
 	wchar_t* wideFileBuff = (wchar_t*)fileBuff; // same buffer interpreted as Unicode
 	fseek(fptr, nSeekPos, SEEK_SET);
 	int nRealFileSizeChars = (int)fread(fileBuff, 1, FILE_BUFFER_SIZE, fptr);
-	nRealFileSizeChars = nRealFileSizeChars/2;
+	if (bUnicode) nRealFileSizeChars = nRealFileSizeChars/2;
 
 	const int LINE_BUFF_SIZE = 512;
-	TCHAR lineBuff[LINE_BUFF_SIZE];
+	TCHAR lineBuff[LINE_BUFF_SIZE + 1];
 	bool bValid = true;
 	int nTotalChars = 0;
 
 	do {
 		int nNumChars = 0;
-
-		wchar_t* pRunning = wideFileBuff;
-
-		bool bIsNull = false;
-		while (*pRunning != L'\n' && nNumChars < 512 && nTotalChars < nRealFileSizeChars)
-			{
-			if (*pRunning == 0)
-				{
-				bIsNull = true;
+		if (bUnicode) {
+			wchar_t* pRunning = wideFileBuff;
+			bool bIsNull = false;
+			while (*pRunning != L'\n' && nNumChars < LINE_BUFF_SIZE && nTotalChars < nRealFileSizeChars) {
+				if (*pRunning == 0) {
+					bIsNull = true;
 				}
-			pRunning++; nNumChars++; nTotalChars++;
+				pRunning++; nNumChars++; nTotalChars++;
 			}
-
-		bValid = nNumChars < 512 && !bIsNull;
-
-		if (bValid)
-			{
-#ifdef _UNICODE
-			memcpy(lineBuff, wideFileBuff, (pRunning - wideFileBuff)*sizeof(TCHAR));
-#else
-			size_t nDummy;
-			wcstombs_s(&nDummy, lineBuff, LINE_BUFF_SIZE, wideFileBuff, pRunning - wideFileBuff);
-#endif
+			bValid = nNumChars < 512 && !bIsNull;
+			if (bValid) {
+				memcpy(lineBuff, wideFileBuff, (pRunning - wideFileBuff)*sizeof(TCHAR));
 			}
-
-		wideFileBuff = pRunning+1;
-		nTotalChars++;
-
-		if (!bValid)
-			{
+			wideFileBuff = pRunning+1;
+			nTotalChars++;
+		} else {
+			char* pRunning = fileBuff;
+			bool bIsNull = false;
+			while (*pRunning != '\n' && nNumChars < LINE_BUFF_SIZE && nTotalChars < nRealFileSizeChars) {
+				if (*pRunning == 0) {
+					bIsNull = true;
+				}
+				pRunning++; nNumChars++; nTotalChars++;
+			}
+			bValid = nNumChars < LINE_BUFF_SIZE && !bIsNull;
+			if (bValid) {
+				size_t nDummy;
+				mbstowcs_s(&nDummy, lineBuff, LINE_BUFF_SIZE, fileBuff, pRunning - fileBuff);
+			}
+			fileBuff = pRunning+1;
+			nTotalChars++;
+		}
+		if (!bValid) {
 			// the file contains very long lines or null characters, it is most likely not a text file
 			fclose(fptr);
 			delete[] fileBuffOrig;
 			return false;
-			}
-
+		}
 		// one line in lineBuff, check if there is a valid file name
 		bool bRelativePath = false;
 		lineBuff[nNumChars] = _T('\n'); // force end
+		lineBuff[nNumChars + 1] = 0; // terminate line string
 		TCHAR* pStart = _tcsstr(lineBuff, _T("\\\\"));
 		if (pStart == NULL) {
 			pStart = _tcsstr(lineBuff+1, _T(":\\"));
-			if (pStart != NULL)
-				{
+			if (pStart != NULL) {
 				pStart--;
-				}
-			else
-				{
+			} else {
 				// try to find file name with relative path
-				for (int i = 0; i < cnNumEndingsInternal; i++)
-					{
-					pStart = _tcsstr(lineBuff, CString(_T(".")) + csFileEndingsInternal[i]);
-					if (pStart != NULL)
-						{
+				LPCTSTR* allFileEndings = GetSupportedFileEndingList();
+				for (int i = 0; i < nNumEndings; i++) {
+					pStart = Helpers::stristr(lineBuff, (LPCTSTR)(CString(_T(".")) + allFileEndings[i]));
+					if (pStart != NULL) {
 						while (pStart >= lineBuff && *pStart != _T('"') && *pStart != _T('>')) pStart--;
 						pStart++;
 						bRelativePath = true;
 						break;
-						}
 					}
 				}
-			
 			}
-
-		if (pStart != NULL)
-			{
+			
+		}
+		if (pStart != NULL) {
 			// extract file name and add to list of files to show
 			TCHAR* pEnd = pStart;
-			while (*pEnd != _T('\r') && *pEnd != _T('\n') && *pEnd != _T('"') && *pEnd != _T('<'))
-				{
+			while (*pEnd != _T('\r') && *pEnd != _T('\n') && *pEnd != _T('"') && *pEnd != _T('<')) {
 				pEnd++;
-				}
+			}
 			*pEnd = 0;
 			CFindFile fileFind;
-			if (fileFind.FindFile(bRelativePath ? (m_sDirectory + _T('\\') + pStart) : pStart))
-				{
+			CString sPath = bRelativePath ? (m_sDirectory + _T('\\') + pStart) : pStart;
+			if (fileFind.FindFile(sPath)) {
 				AddToFileList(m_fileList, fileFind, NULL);
-				}
 			}
-		} while (nTotalChars < nRealFileSizeChars);
+		}
+	} while (nTotalChars < nRealFileSizeChars);
 
 	fclose(fptr);
 	delete[] fileBuffOrig;
 	return true;
+}
+
+// Custom
+void CFileList::ListFileDelete(LPCTSTR sFileName) {
+	// Delete file out of list directly without checking all files' attributes
+
+	std::list<CFileDesc>::iterator iter;
+
+	for (iter = m_fileList.begin( ); iter != m_fileList.end( ); iter++ ) {		
+		if (_tcsicmp((LPCTSTR)sFileName, iter->GetName()) == 0) {
+			iter = m_fileList.erase(iter);
+			break;
+		}
+	}
+}
+
+// Used by custom SaveBookmark()
+bool CFileList::IsEndpoint() {
+	m_nMarkedIndexShow = -1;
+
+	if (m_iter == m_fileList.begin())
+		return true;
+
+	if (m_fileList.size() > 0)
+		{
+		std::list<CFileDesc>::iterator iterTemp = m_iter;
+		iterTemp++;
+		if (iterTemp == m_fileList.end()) {
+			return true;
+		}
+	}
+
+	return false;
 }

@@ -30,6 +30,7 @@ static void RotateInplace(const CSize& imageSize, double& dX, double& dY, double
 static bool SupportsSIMD(Helpers::CPUType cpuType) {
 	switch (cpuType)
 	{
+//	case Helpers::CPU_MMX:
 	case Helpers::CPU_SSE:
 	case Helpers::CPU_AVX2:
 		return true;
@@ -41,6 +42,8 @@ static bool SupportsSIMD(Helpers::CPUType cpuType) {
 static CBasicProcessing::SIMDArchitecture ToSIMDArchitecture(Helpers::CPUType cpuType) {
 	switch (cpuType)
 	{
+	case Helpers::CPU_MMX:
+		return CBasicProcessing::MMX;
 	case Helpers::CPU_SSE:
 		return CBasicProcessing::SSE;
 	case Helpers::CPU_AVX2:
@@ -76,7 +79,7 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 		m_nEXIFSize = pEXIF[2]*256 + pEXIF[3] + 2;
 		m_pEXIFData = new char[m_nEXIFSize];
 		memcpy(m_pEXIFData, pEXIFData, m_nEXIFSize);
-		m_pEXIFReader = new CEXIFReader(m_pEXIFData);
+		m_pEXIFReader = new CEXIFReader(m_pEXIFData, eImageFormat);
 	} else {
 		m_nEXIFSize = 0;
 		m_pEXIFData = NULL;
@@ -86,7 +89,7 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 	m_pRawMetadata = pRawMetadata;
 
 /*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("bIsAnimation: %d"), bIsAnimation);
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::CJPEGImage() bIsAnimation: %d"), bIsAnimation);
 /*GF*/	::OutputDebugStringW(debugtext);
 
 	m_nPixelHash = nJPEGHash;
@@ -126,7 +129,7 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 //	m_pCachedProcessedHistogram = NULL;
 
 	m_bCropped = false;
-	m_bIsDestructivlyProcessed = false;
+	m_bIsDestructivelyProcessed = false;
 	m_nRotation = 0;
 	m_bRotationByEXIF = false;
 	m_bFirstReprocessing = true;
@@ -188,6 +191,30 @@ CJPEGImage::~CJPEGImage(void) {
 //	m_pCachedProcessedHistogram = NULL;
 //	delete m_pRawMetadata;
 //	m_pRawMetadata = NULL;
+}
+
+bool CJPEGImage::RotateOriginalPixels(double dRotation, bool bAutoCrop, bool bKeepAspectRatio) {
+/*
+	InvalidateAllCachedPixelData();
+
+	CPoint offset;
+	CSize newSize = GetSizeAfterFreeRotation(CSize(m_nOrigWidth, m_nOrigHeight), dRotation, bAutoCrop, bKeepAspectRatio, offset);
+	void* pRotatedPixels = CBasicProcessing::RotateHQ(offset, newSize, dRotation,
+		CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, CSettingsProvider::This().ColorBackground());
+	if (pRotatedPixels == NULL) return false;
+	delete[] m_pOrigPixels;
+
+	m_nOrigWidth = newSize.cx;
+	m_nOrigHeight = newSize.cy;
+	m_nOriginalChannels = 4;
+	m_pOrigPixels = pRotatedPixels;
+	MarkAsDestructivelyProcessed();
+
+	m_rotationParams.FreeRotation = fmod(360 * dRotation / (2 * 3.141592653), 360);
+	m_rotationParams.Flags = SetRotationFlag(m_rotationParams.Flags, RFLAG_AutoCrop, bAutoCrop);
+	m_rotationParams.Flags = SetRotationFlag(m_rotationParams.Flags, RFLAG_KeepAspectRatio, bKeepAspectRatio);
+*/
+	return true;
 }
 
 void CJPEGImage::ResampleWithPan(void* & pDIBPixels, void* & pDIBPixelsLUTProcessed, CSize fullTargetSize, 
@@ -325,9 +352,10 @@ void* CJPEGImage::Resample(CSize fullTargetSize, CSize clippingSize, CPoint targ
 	if (fullTargetSize.cx > 65535 || fullTargetSize.cy > 65535)
 		return NULL;
 
+	/*GF*/	double dSharpen = 0.0;
 	/*GF*/	TCHAR debugtext[512];
 
-	/*GF*/	swprintf(debugtext,255,TEXT("eResizeType: %d"),eResizeType);
+	/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::Resample() eResizeType: %d  (0=NoResize, 1=DownSample, 2=UpSample)"),eResizeType);
 	/*GF*/	::OutputDebugStringW(debugtext);
 				
 	if (GetProcessingFlag(eProcFlags, PFLAG_HighQualityResampling)
@@ -338,32 +366,36 @@ void* CJPEGImage::Resample(CSize fullTargetSize, CSize clippingSize, CPoint targ
 			{
 			if (eResizeType == UpSample)
 				{
-				/*GF*/	swprintf(debugtext,255,TEXT("Resample()->SampleUp_SIMD()"));
+				/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::Resample() -> SampleUp_HQ_SIMD()"));
 				/*GF*/	::OutputDebugStringW(debugtext);
-				return CBasicProcessing::SampleUp_SIMD(fullTargetSize, targetOffset, clippingSize, CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, ToSIMDArchitecture(cpu));
+				return CBasicProcessing::SampleUp_HQ_SIMD(fullTargetSize, targetOffset, clippingSize, 
+					CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, ToSIMDArchitecture(cpu));
 				}
 			else
 				{
-				/*GF*/	swprintf(debugtext,255,TEXT("Resample()->SampleDown_SIMD()"));
+				/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::Resample() -> SampleDown_HQ_SIMD()"));
 				/*GF*/	::OutputDebugStringW(debugtext);
-				return CBasicProcessing::SampleDown_SIMD(fullTargetSize, targetOffset, clippingSize, CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, filter, ToSIMDArchitecture(cpu));
+				return CBasicProcessing::SampleDown_HQ_SIMD(fullTargetSize, targetOffset, clippingSize, 
+					CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, dSharpen, filter, ToSIMDArchitecture(cpu));
 				}
 		} else {
 			if (eResizeType == UpSample) {
-				/*GF*/	swprintf(debugtext,255,TEXT("Resample()->SampleUp()"));
+				/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::Resample() -> SampleUp_HQ()"));
 				/*GF*/	::OutputDebugStringW(debugtext);
-				return CBasicProcessing::SampleUp(fullTargetSize, targetOffset, clippingSize, CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels);
+				return CBasicProcessing::SampleUp_HQ(fullTargetSize, targetOffset, clippingSize, 
+					CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels);
 			} else
 				{
-				/*GF*/	swprintf(debugtext,255,TEXT("Resample()->SampleDown()"));
+				/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::Resample() -> SampleDown_HQ()"));
 				/*GF*/	::OutputDebugStringW(debugtext);
-				return CBasicProcessing::SampleDown(fullTargetSize, targetOffset, clippingSize, CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, filter);
+				return CBasicProcessing::SampleDown_HQ(fullTargetSize, targetOffset, clippingSize, 
+					CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, dSharpen, filter);
 				}
 			}
 		}
 	else
 		{
-		/*GF*/	swprintf(debugtext,255,TEXT("Resample()->PointSample()"));
+		/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::Resample() -> PointSample()"));
 		/*GF*/	::OutputDebugStringW(debugtext);
 		return CBasicProcessing::PointSample(fullTargetSize, targetOffset, clippingSize, CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels);
 		}
@@ -389,8 +421,23 @@ bool CJPEGImage::VerifyRotation(int nRotation) {
 	}
 */
 	return true;
-	}
+}
 
+/*
+bool CJPEGImage::VerifyRotation(const CRotationParams& rotationParams) {
+	// First integer rotation (fast)
+	int nDiff = ((rotationParams.Rotation - m_rotationParams.Rotation) + 360) % 360;
+	if (nDiff != 0) {
+		if (!Rotate(nDiff)) return false;
+	}
+	if (fabs(rotationParams.FreeRotation - m_rotationParams.FreeRotation) >= 0.009)
+	{
+		return RotateOriginalPixels(2 * 3.141592653  * rotationParams.FreeRotation / 360, 
+			GetRotationFlag(rotationParams.Flags, RFLAG_AutoCrop), GetRotationFlag(rotationParams.Flags, RFLAG_KeepAspectRatio));
+	}
+	return true;
+}
+*/
 bool CJPEGImage::Rotate(int nRotation) {
 //*GF*/	double dStartTickCount = Helpers::GetExactTickCount();
 
@@ -436,6 +483,15 @@ bool CJPEGImage::Mirror(bool bHorizontally) {
 //*GF*/	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
 	return true;
 	}
+
+void CJPEGImage::EnableDimming(bool bEnable) {
+	if (bEnable != m_bEnableDimming && m_pDimRects != NULL) {
+		m_bEnableDimming = bEnable;
+		delete[] m_pDIBPixelsLUTProcessed;
+		m_pDIBPixelsLUTProcessed = NULL;
+		m_pLastDIB = NULL;
+	}
+}
 
 void* CJPEGImage::DIBPixelsLastProcessed(bool bGenerateDIBIfNeeded) {
 	if (bGenerateDIBIfNeeded && m_pLastDIB == NULL) {
@@ -598,6 +654,86 @@ CSize CJPEGImage::SizeAfterRotation(int nRotation) {
 	}
 }
 
+/*
+CSize CJPEGImage::SizeAfterRotation(const CRotationParams& rotationParams) {
+	int nDiff = ((rotationParams.Rotation - m_rotationParams.Rotation) + 360) % 360;
+	CSize size = (nDiff == 90 || nDiff == 270) ? CSize(m_nOrigHeight, m_nOrigWidth) : CSize(m_nOrigWidth, m_nOrigHeight);
+	double dDiff = fabs(rotationParams.FreeRotation - m_rotationParams.FreeRotation);
+	if (dDiff >= 0.009) {
+		CPoint offset;
+		return GetSizeAfterFreeRotation(size, 2 * 3.141592653 * rotationParams.FreeRotation / 360, GetRotationFlag(rotationParams.Flags, RFLAG_AutoCrop),
+			GetRotationFlag(rotationParams.Flags, RFLAG_KeepAspectRatio), offset);
+	}
+	return size;
+}
+
+CSize CJPEGImage::GetSizeAfterFreeRotation(const CSize& sourceSize, double dRotation, bool bAutoCrop, bool bKeepAspectRatio, CPoint & offset) {
+#pragma warning(disable:4838)
+	double dCoords[] = { 0, 0, sourceSize.cx - 1, 0, sourceSize.cx - 1, sourceSize.cy - 1, 0, sourceSize.cy - 1 };
+#pragma warning(default:4838)
+	double dXMin = HUGE_VAL, dXMax = -HUGE_VAL;
+	double dYMin = HUGE_VAL, dYMax = -HUGE_VAL;
+	for (int i = 0; i < 4; i++) {
+		RotateInplace(sourceSize, dCoords[i * 2], dCoords[i * 2 + 1], dRotation);
+		dXMin = min(dXMin, dCoords[i * 2]);
+		dXMax = max(dXMax, dCoords[i * 2]);
+		dYMin = min(dYMin, dCoords[i * 2 + 1]);
+		dYMax = max(dYMax, dCoords[i * 2 + 1]);
+	}
+
+	double dCenterX = (sourceSize.cx - 1) * 0.5;
+	double dCenterY = (sourceSize.cy - 1) * 0.5;
+
+	int nXStart, nXEnd;
+	int nYStart, nYEnd;
+
+	if (bAutoCrop) {
+		// Calculate the maximum enclosed rectangle by intersecting the diagonal lines of the bounding box with the rotated rectangle sides
+		if (bKeepAspectRatio) {
+			double dNeededX = ((double)sourceSize.cx / sourceSize.cy) * (dYMax - dYMin);
+			double dCenterX = (dXMax + dXMin) * 0.5;
+			dXMin = dCenterX - 0.5 * dNeededX;
+			dXMax = dCenterX + 0.5 * dNeededX;
+		}
+		double dBestX = (dXMax - dXMin) * 0.5;
+		double dBestY = (dYMax - dYMin) * 0.5;
+		double dBestDistance = dBestX*dBestX + dBestY*dBestY;
+		for (int nSign = -1; nSign < 2; nSign += 2) {
+			for (int i = 0; i < 4; i++) {
+				int j = (i + 1) % 4;
+				double dV1x = dCoords[j * 2] - dCoords[i * 2];
+				double dV1y = dCoords[j * 2 + 1] - dCoords[i * 2 + 1];
+				double dNumerator = dCoords[i * 2] * dYMin - dCoords[i * 2 + 1] * nSign * dXMax;
+				double dDenumerator = dV1y * nSign * dXMax - dV1x * dYMin;
+				double dT = dNumerator / dDenumerator;
+				if (dT > -1e-8 && dT - 1 < 1e-8) {
+					double dX = dCoords[i * 2] + dT * dV1x;
+					double dY = dCoords[i * 2 + 1] + dT * dV1y;
+					double dDist = dX*dX + dY*dY;
+					if (dDist < dBestDistance) {
+						dBestDistance = dDist;
+						dBestX = dX;
+						dBestY = dY;
+					}
+				}
+			}
+		}
+		nXStart = Helpers::RoundToInt(-fabs(dBestX) + dCenterX);
+		nXEnd = Helpers::RoundToInt(fabs(dBestX) + dCenterX);
+		nYStart = Helpers::RoundToInt(-fabs(dBestY) + dCenterY);
+		nYEnd = Helpers::RoundToInt(fabs(dBestY) + dCenterY);
+	} else {
+		nXStart = (int)(dXMin + dCenterX - 0.999);
+		nXEnd = (int)(dXMax + dCenterX + 0.999);
+		nYStart = (int)(dYMin + dCenterY - 0.999);
+		nYEnd = (int)(dYMax + dCenterY + 0.999);
+	}
+
+	offset = CPoint(nXStart, nYStart);
+
+	return CSize(nXEnd - nXStart + 1, nYEnd - nYStart + 1);
+}
+*/
 CJPEGImage::EResizeType CJPEGImage::GetResizeType(CSize targetSize, CSize sourceSize) {
 	if (targetSize.cx == sourceSize.cx && targetSize.cy == sourceSize.cy) {
 		return NoResize;
@@ -625,14 +761,14 @@ int CJPEGImage::GetRotationFromEXIF(int nOrigRotation)
 			bool bWHThumb = m_pEXIFReader->GetThumbnailWidth() > m_pEXIFReader->GetThumbnailHeight();
 			if (bWHOrig != bWHThumb)
 				{
-/*GF*/	swprintf(debugtext,255,TEXT("GetRotationFromEXIF(int nOrigRotation=%d) Note: EXIF thumbnail (%dx%d) has different ratio than image (%dx%d)"), nOrigRotation, m_pEXIFReader->GetThumbnailWidth(), m_pEXIFReader->GetThumbnailHeight(), m_nInitOrigWidth, m_nInitOrigHeight);
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::GetRotationFromEXIF(int nOrigRotation=%d) Note: EXIF thumbnail (%dx%d) has different ratio than image (%dx%d)"), nOrigRotation, m_pEXIFReader->GetThumbnailWidth(), m_pEXIFReader->GetThumbnailHeight(), m_nInitOrigWidth, m_nInitOrigHeight);
 /*GF*/	::OutputDebugStringW(debugtext);
 
 //GF			return nOrigRotation;
 				}
 			}
 
-/*GF*/	swprintf(debugtext,255,TEXT("GetRotationFromEXIF(int nOrigRotation=%d) EXIF rotation found: %d  (values: 0=0° / 3=180° / 6=90° / 8=270°)"), nOrigRotation, m_pEXIFReader->GetImageOrientation());
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::GetRotationFromEXIF(int nOrigRotation=%d) EXIF rotation found: %d  (values: 0=0° / 3=180° / 6=90° / 8=270°)"), nOrigRotation, m_pEXIFReader->GetImageOrientation());
 /*GF*/	::OutputDebugStringW(debugtext);
 
 		switch (m_pEXIFReader->GetImageOrientation())
@@ -653,7 +789,7 @@ int CJPEGImage::GetRotationFromEXIF(int nOrigRotation)
 		}
 	else
 		{
-		/*GF*/	swprintf(debugtext,255,TEXT("GetRotationFromEXIF(int nOrigRotation=%d) No EXIF rotation found"), nOrigRotation);
+		/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::GetRotationFromEXIF(int nOrigRotation=%d) No EXIF rotation found"), nOrigRotation);
 		/*GF*/	::OutputDebugStringW(debugtext);
 		}
 
@@ -661,7 +797,7 @@ int CJPEGImage::GetRotationFromEXIF(int nOrigRotation)
 	}
 
 void CJPEGImage::MarkAsDestructivelyProcessed() {
-	m_bIsDestructivlyProcessed = true;
+	m_bIsDestructivelyProcessed = true;
 	//m_rotationParams.FreeRotation = 0.0;
 	//m_rotationParams.Flags = RFLAG_None;
 }

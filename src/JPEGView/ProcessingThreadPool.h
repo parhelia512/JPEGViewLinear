@@ -15,7 +15,9 @@ public:
 		FullTargetSize = fullTargetSize;
 		FullTargetOffset = fullTargetOffset;
 		ClippedTargetSize = clippedTargetSize;
-		StripPadding = 8;
+		//StripPadding = 8;
+		// For linear processing, we use double the data size, so can process only half as many pixels at once, so one strip can only be half the height of vanilla JpegView.
+		StripPadding = 4;
 		Success = true;
 	}
 

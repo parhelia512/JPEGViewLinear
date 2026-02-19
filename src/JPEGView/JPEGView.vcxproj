@@ -76,20 +76,20 @@
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(VCInstallDir)WTL\Include;$(IncludePath);WTL10\include;libpng-apng\include;libwebp\include;lcms2\include</IncludePath>
-    <LibraryPath>$(LibraryPath);libjpeg-turbo\lib;libpng-apng\lib;lcms2\lib;libwebp\lib</LibraryPath>
+    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\lcms2\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib;$(ProjectDir)\libpng-apng\lib;$(ProjectDir)libjxl\lib;$(ProjectDir)\lcms2\lib;$(ProjectDir)\libwebp\lib;$(LibraryPath);</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(VCInstallDir)WTL\Include;$(IncludePath);WTL10\include;libpng-apng\include;libwebp\include;lcms2\include</IncludePath>
-    <LibraryPath>$(LibraryPath);libjpeg-turbo\lib;libpng-apng\lib;lcms2\lib;libwebp\lib</LibraryPath>
+    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\lcms2\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib;$(ProjectDir)\libpng-apng\lib;$(ProjectDir)libjxl\lib;$(ProjectDir)\lcms2\lib;$(ProjectDir)\libwebp\lib;$(LibraryPath);</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(VCInstallDir)WTL\Include;$(IncludePath);WTL10\include;libpng-apng\include;libwebp\include;lcms2\include</IncludePath>
-    <LibraryPath>$(LibraryPath);libjpeg-turbo\lib64;libpng-apng\lib64;lcms2\lib64;libwebp\lib64</LibraryPath>
+    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\lcms2\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib64;$(ProjectDir)\libpng-apng\lib64;$(ProjectDir)libjxl\lib64;$(ProjectDir)\lcms2\lib64;$(ProjectDir)\libwebp\lib64;$(LibraryPath);</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VCInstallDir)WTL\Include;$(IncludePath);WTL10\include;libpng-apng\include;libwebp\include;lcms2\include</IncludePath>
-    <LibraryPath>$(LibraryPath);libjpeg-turbo\lib64;libpng-apng\lib64;lcms2\lib64;libwebp\lib64</LibraryPath>
+    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\lcms2\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib64;$(ProjectDir)\libpng-apng\lib64;$(ProjectDir)libjxl\lib64;$(ProjectDir)\lcms2\lib64;$(ProjectDir)\libwebp\lib64;$(LibraryPath);</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
@@ -122,16 +122,17 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;libwebp.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Dbghelp.lib;gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;jxl_dec.lib;jxl_threads.lib;libwebp.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>x86\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	  <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
+	  <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>x86\$(Configuration);libjpeg-turbo\lib;libpng-apng\lib;libwebp\lib;lcms2\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
-      <DelayLoadDLLs></DelayLoadDLLs>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -168,16 +169,17 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;jxl_dec.lib;jxl_threads.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>x64\$(Configuration);libjpeg-turbo\lib64;libpng-apng\lib64;libwebp\lib64;lcms2\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX64</TargetMachine>
-      <DelayLoadDLLs></DelayLoadDLLs>
+      <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
+	  <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -214,16 +216,16 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;jxl_dec.lib;jxl_threads.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>x86\$(Configuration);libjpeg-turbo\lib;libpng-apng\lib;libwebp\lib;lcms2\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>x86\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
-      <DelayLoadDLLs></DelayLoadDLLs>
+      <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
     </Link>
     <Manifest>
       <EnableDPIAwareness>PerMonitorHighDPIAware</EnableDPIAwareness>
@@ -259,16 +261,16 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;jxl_dec.lib;jxl_threads.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>x64\$(Configuration);libjpeg-turbo\lib64;libpng-apng\lib64;libwebp\lib64;lcms2\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX64</TargetMachine>
-      <DelayLoadDLLs></DelayLoadDLLs>
+      <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
     </Link>
     <Manifest>
       <EnableDPIAwareness>PerMonitorHighDPIAware</EnableDPIAwareness>
@@ -290,6 +292,7 @@
     <ClCompile Include="JPEGImage.cpp" />
     <ClCompile Include="JPEGProvider.cpp" />
     <ClCompile Include="JPEGView.cpp" />
+    <ClCompile Include="JXLWrapper.cpp" />
     <ClCompile Include="MultiMonitorSupport.cpp" />
     <ClCompile Include="NLS.cpp" />
     <ClCompile Include="PNGWrapper.cpp" />
@@ -326,6 +329,8 @@
     <ClInclude Include="ImageProcessingTypes.h" />
     <ClInclude Include="JPEGImage.h" />
     <ClInclude Include="JPEGProvider.h" />
+    <ClInclude Include="JXLWrapper.h" />
+    <ClInclude Include="LookupTables.h" />
     <ClInclude Include="MaxImageDef.h" />
     <ClInclude Include="MessageDef.h" />
     <ClInclude Include="MultiMonitorSupport.h" />

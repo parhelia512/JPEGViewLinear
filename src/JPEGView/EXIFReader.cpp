@@ -241,10 +241,11 @@ bool CEXIFReader::ParseDateString(SYSTEMTIME & date, const CString& str) {
 	return false;
 }
 
-CEXIFReader::CEXIFReader(void* pApp1Block) 
-: m_exposureTime(0, 0) {
-
-	memset(&m_acqDate, 0, sizeof(SYSTEMTIME));
+CEXIFReader::CEXIFReader(void* pApp1Block, EImageFormat eImageFormat)
+	: m_exposureTime{ 0, 0 },
+	m_acqDate{ 0 },
+	m_dateTime{ 0 }
+{
 	m_bFlashFired = false;
 	m_bFlashFlagPresent = false;
 	m_dFocalLength = m_dExposureBias = m_dFNumber = UNKNOWN_DOUBLE_VALUE;
@@ -297,7 +298,11 @@ CEXIFReader::CEXIFReader(void* pApp1Block)
 	m_pLastIFD0 = pLastIFD0;
 
 	// image orientation
-	uint8* pTagOrientation = FindTag(pIFD0, pLastIFD0, 0x112, bLittleEndian);
+	uint8* pTagOrientation = NULL;
+	// orientation tags must be ignored for JXL and HEIF/AVIF
+	if (eImageFormat != IF_JXL && eImageFormat != IF_HEIF && eImageFormat != IF_AVIF) {
+		pTagOrientation = FindTag(pIFD0, pLastIFD0, 0x112, bLittleEndian);
+	}
 	if (pTagOrientation != NULL) {
 		m_nImageOrientation = ReadShortTag(pTagOrientation, bLittleEndian);
 	}
@@ -322,6 +327,14 @@ CEXIFReader::CEXIFReader(void* pApp1Block)
 			}
 		}
 	}
+
+	uint8* pTagSoftware = FindTag(pIFD0, pLastIFD0, 0x0131, bLittleEndian);
+	ReadStringTag(m_sSoftware, pTagSoftware, pTIFFHeader, bLittleEndian);
+
+	uint8* pTagModDate = FindTag(pIFD0, pLastIFD0, 0x0132, bLittleEndian);
+	CString sModDate;
+	ReadStringTag(sModDate, pTagModDate, pTIFFHeader, bLittleEndian);
+	ParseDateString(m_dateTime, sModDate);
 
 	uint8* pTagEXIFIFD = FindTag(pIFD0, pLastIFD0, 0x8769, bLittleEndian);
 	if (pTagEXIFIFD == NULL) {
@@ -383,6 +396,10 @@ CEXIFReader::CEXIFReader(void* pApp1Block)
 	if (m_sUserComment == "User comments") {	
 		m_sUserComment = "";
 	}
+
+	// https://exiv2.org/tags.html
+	// uint8* pTagXPComment = FindTag(pIFD0, pLastIFD0, 0x9c9c, bLittleEndian);  // this is the XPComment tag to resolve this issue https://github.com/sylikc/jpegview/issues/72 , but I'm not sure how to decode it
+
 
 	if (nOffsetIFD1 != 0) {
 		m_pIFD1 = pTIFFHeader + nOffsetIFD1;
@@ -499,6 +516,10 @@ void CEXIFReader::ReadGPSData(uint8* pTIFFHeader, uint8* pTagGPSIFD, int nApp1Si
 	uint8* pTagAltitude = FindTag(pGPSIFD, pLastGPS, 0x6, bLittleEndian);
 	if (pTagAltitude != NULL) {
 		m_dAltitude = ReadDoubleTag(pTagAltitude, pTIFFHeader, bLittleEndian);
+		uint8* pTagAltitudeRef = FindTag(pGPSIFD, pLastGPS, 0x5, bLittleEndian);
+		if (pTagAltitudeRef != NULL && *(pTagAltitudeRef + 8) == 1) {
+			m_dAltitude *= -1;
+		}
 	}
 }
 

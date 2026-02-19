@@ -34,7 +34,7 @@ public:
 	// If RAW metadata is specified, ownership of this memory is transferred to this class.
 	CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, int nChannels, 
 		__int64 nJPEGHash, EImageFormat eImageFormat, bool bIsAnimation, int nFrameIndex, int nNumberOfFrames, int nFrameTimeMs,
-        CLocalDensityCorr* pLDC = NULL, bool bIsThumbnailImage = false, CRawMetadata* pRawMetadata = NULL);
+		CLocalDensityCorr* pLDC = NULL, bool bIsThumbnailImage = false, CRawMetadata* pRawMetadata = NULL);
 	~CJPEGImage(void);
 
 	// Gets resampled and processed 32 bpp DIB image (up or downsampled).
@@ -48,47 +48,139 @@ public:
 	// The returned DIB is a 32 bpp DIB (BGRA). Note that the returned pointer must not
 	// be deleted by the caller and is only valid until another call to GetDIB() is done, the CJPEGImage
 	// object is disposed or the Rotate(), Crop() or any other method affecting original pixels is called!
-	// Note: The method tries to satisfy consecuting requests as efficient as possible. Calling the GetDIB()
+	// Note: The method tries to satisfy consecutive requests as efficient as possible. Calling the GetDIB()
 	// method multiple times with the same set of parameters will return the same image starting from the second
 	// call without doing image processing anymore.
 	void* GetDIB(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
 		EProcessingFlags eProcFlags) {
 		bool bNotUsed;
 		return GetDIBInternal(fullTargetSize, clippingSize, targetOffset, eProcFlags, bNotUsed);
-		}
+	}
+/*
+	// Gets resampled and processed DIB image (up or downsampled), also including a low quality rotation.
+	// The rotation angle is specified in radians.
+	// PFLAG_HighQualityResampling must not be set when calling this method 
+	void* GetDIBRotated(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
+		const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, double dRotation, bool bShowGrid) {
+		bool bNotUsed;
+		return GetDIBInternal(fullTargetSize, clippingSize, targetOffset, imageProcParams, eProcFlags, NULL, NULL, dRotation, bShowGrid, bNotUsed);
+	}
 
+	// Gets resampled and processed DIB image (up or downsampled), including a low quality trapezoid transformation.
+	// PFLAG_HighQualityResampling must not be set when calling this method 
+	void* GetDIBTrapezoid(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
+		const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, const CTrapezoid* pTrapezoid, bool bShowGrid) {
+		bool bNotUsed;
+		return GetDIBInternal(fullTargetSize, clippingSize, targetOffset, imageProcParams, eProcFlags, NULL, pTrapezoid, 0.0, bShowGrid, bNotUsed);
+	}
+
+	// Gets a thumbnail of the original image.
+	// The returned thumbnail (32 bpp DIB) has the specified size. 'Size' should not be larger than 400 x 300 pixels
+	void* GetThumbnailDIB(CSize size, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags);
+
+	// Gets a thumbnail of a section of the original image.
+	// The returned thumbnail (32 bpp DIB) has the size 'clippingSize'. 'ClippingSize' should not be larger than 400 x 300 pixels
+	// The parameters are the same as with GetDIB() - see there.
+	void* GetThumbnailDIB(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
+		const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags);
+
+	// Same as GetThumbnailDIB() but with low quality rotation. The rotation angle is specified in radians.
+	void* GetThumbnailDIBRotated(CSize size, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, double dRotation);
+
+	// Same as GetThumbnailDIB() but with trapezoid correction.
+	void* GetThumbnailDIBTrapezoid(CSize size, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, const CTrapezoid& trapezoid);
+
+	// Performs unsharp masking to a section in the original image, then applies image processing as requested and
+	// return resulting 32 bpp DIB. The returned DIB has the same resolution as the original image.
+	// The original image pixels are not touched by this operation.
+	// clippingSize: Sub-rectangle in original size image to render (the returned DIB has this size)
+	// targetOffset: Offset in original size image
+	// See GetDIB() for more information.
+	void* GetDIBUnsharpMasked(CSize clippingSize, CPoint targetOffset,
+		const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags,
+		const CUnsharpMaskParams & unsharpMaskParams);
+
+	// Frees any resources hold to speed up GetDIBUnsharpMasked(). Subsequent calls to GetDIBUnsharpMasked() will work but may be slower.
+	void FreeUnsharpMaskResources();
+
+	// Operations on original pixels of the image
+
+	// Apply unsharp masking to the original image pixels. Cannot be undone except by reloading the image from disk.
+	// Returns false if not enough memory is available to perform the operation.
+	bool ApplyUnsharpMaskToOriginalPixels(const CUnsharpMaskParams & unsharpMaskParams);
+
+	// Mirrors the image horizontally or vertically.
+	// Applies to original pixels!
+	bool Mirror(bool bHorizontally);
+
+	// Crops the image. 
+	// Applies to original pixels!
+	bool Crop(CRect cropRect);
+*/
+	// Rotate the image clockwise by 90, 180 or 270 degrees. All other angles are invalid.
+	// Applies to original pixels!
+	bool Rotate(int nRotation);
+
+	// Rotate original pixels by given angle (in radians). The original pixels are replaced by this operation.
+	// If autocrop is enabled, the maximum rectangular area is cropped, else black borders are added to the image.
+	// If keep aspect ratio is true, the aspect ratio of the cropped area is the same as the aspect ratio of the original image.
+	// In all cases the size of the image in pixels is changed by the rotation.
+	// Returns false if not enough memory is available to perform the operation.
+	bool RotateOriginalPixels(double dRotation, bool bAutoCrop, bool bKeepAspectRatio);
+/*
+	// Transform original pixels into horizontal trapezoid. The original pixels are replaced by this operation.
+	// See RotateOriginalPixels() for auto crop parameter and keep aspect ratio parameter.
+	// In all cases the size of the image in pixels is changed by this operation.
+	// Returns false if not enough memory is available to perform the operation.
+	bool TrapezoidOriginalPixels(const CTrapezoid& trapezoid, bool bAutoCrop, bool bKeepAspectRatio);
+
+	// Resizes the original pixels to the given target size.
+	// Returns false if not enough memory is available to perform the operation or if specified size is not valid.
+	bool ResizeOriginalPixels(EResizeFilter filter, CSize newSize);
+
+	// Gets histogram of the original, unprocessed image
+	const CHistogram* GetOriginalHistogram();
+
+	// Gets the histogram of the processed image - histogram is over the whole image, not only the visible section
+	const CHistogram* GetProcessedHistogram();
+*/
 	// Gets the hash value of the pixels, for JPEGs the hash is on the compressed pixels
 	__int64 GetPixelHash() const { return m_nPixelHash; }
 
 	// Gets the pixel hash over the de-compressed pixels
 	__int64 GetUncompressedPixelHash() const;
 
-	// Original image size (of the unprocessed raw image, however the raw image may have been rotated or cropped)
+	// Original image size. Operations on the original pixels will change this size!
 	int OrigWidth() const { return m_nOrigWidth; }
 	int OrigHeight() const { return m_nOrigHeight; }
 	CSize OrigSize() const { return CSize(m_nOrigWidth, m_nOrigHeight); }
 
-	// Size of DIB - size of resampled section of the original image. If zero, no DIB is currently processed.
+	// Original image size at the time the CJPEGImage was constructed.
+	// Operations on the original pixels will not change this size!
+	int InitOrigWidth() const { return m_nInitOrigWidth; }
+	int InitOrigHeight() const { return m_nInitOrigHeight; }
+
+	// Size of DIB - size of resampled section of the original image. If zero, no DIB is currently available.
 	int DIBWidth() const { return m_ClippingSize.cx; }
 	int DIBHeight() const { return m_ClippingSize.cy; }
 
 	// Convert DIB coordinates into original image coordinates and vice versa
 	void DIBToOrig(float & fX, float & fY);
 	void OrigToDIB(float & fX, float & fY);
+/*
+	// Gets the rotation applied to the pixels
+	const CRotationParams& GetRotationParams() {return m_rotationParams; }
+*/
+	// Gets or sets the JPEG chromo sampling. See turbojpeg.h for the TJSAMP enumeration.
+	TJSAMP GetJPEGChromoSampling() { return m_eJPEGChromoSampling; }
+	void SetJPEGChromoSampling(TJSAMP eSampling) { m_eJPEGChromoSampling = eSampling; }
 
-    // Gets or sets the JPEG chromo sampling. See turbojpeg.h for the TJSAMP enumeration.
-    TJSAMP GetJPEGChromoSampling() { return m_eJPEGChromoSampling; }
-    void SetJPEGChromoSampling(TJSAMP eSampling) { m_eJPEGChromoSampling = eSampling; }
-
-	// Declare the generated DIB as invalid - forcing it to be regenerated on next access
+	// Declare the cached DIB as invalid - forcing it to be regenerated on next GetDIB() call
 	void SetDIBInvalid() { m_ClippingSize = CSize(0, 0); }
 
 	// Verify that the image is currently rotated by the given angle and rotate the image if not. nRotation must be 0, 90, 180, 270
 	bool VerifyRotation(int nRotation);
-
-	// Rotate the image clockwise by 90, 180 or 270 degrees. All other angles are invalid.
-	// Applies to original image!
-	bool Rotate(int nRotation);
+	//bool VerifyRotation(const CRotationParams& rotationParams);
 
 	// Mirrors the image horizontally or vertically.
 	// Applies to original image!
@@ -98,23 +190,23 @@ public:
 	bool IsCropped() { return m_bCropped; }
 
 	// Returns if this image's original pixels have been processed destructively (e.g. cropped or rotated by non-90 degrees steps)
-	bool IsDestructivlyProcessed() { return m_bIsDestructivlyProcessed; }
+	bool IsDestructivelyProcessed() { return m_bIsDestructivelyProcessed; }
 
-	// raw access to input pixels - do not delete or store the pointer returned
+	// raw access to original pixels - do not delete or store the returned pointer
 	void* IJLPixels() { return  m_pOrigPixels; }
 	const void* IJLPixels() const { return m_pOrigPixels; }
 	// remove IJL pixels form class - will be NULL afterwards
 	void DetachIJLPixels() { m_pOrigPixels = NULL; }
 
-	// returns the number of channels in the IJLPixels (3 or 4, corresponding to 24 bpp and 32 bpp)
+	// returns the number of channels in the OriginalPixels (3 or 4, corresponding to 24 bpp and 32 bpp)
 	int IJLChannels() const { return m_nOriginalChannels; }
 
-	// raw access to DIB pixels with no LUT applied - do not delete or store the pointer returned
+	// raw access to DIB pixels with no LUT applied - do not delete or store the returned pointer
 	// note that this DIB can be NULL due to optimization if currently only the processed DIB is maintained
 	void* DIBPixels() { return m_pDIBPixels; }
 	const void* DIBPixels() const { return m_pDIBPixels; }
 
-	// Gets the DIB last processed. If none, the last used parameters are taken to generate the DIB
+	// Gets the DIB last processed. If none, the last used parameters are taken to generate the DIB - if bGenerateDIBIfNeeded is true 
 	void* DIBPixelsLastProcessed(bool bGenerateDIBIfNeeded);
 
 	// Gets the image processing flags as set as default (may varies from file to file)
@@ -132,7 +224,7 @@ public:
 	// Gets the offsets as set as default (can vary from file to file)
 	CPoint GetInitialOffsets() const { return m_initialOffsets; }
 
-	// To be called after creation of the object to intialize the initial processing parameters.
+	// To be called after creation of the object to initialize the initial processing parameters.
 	// Input are the global defaults for the processing parameters, output (in pParams) are the
 	// processing parameters for this file (maybe different from the global ones)
 	void SetFileDependentProcessParams(LPCTSTR sFileName, CProcessParams* pParams);
@@ -142,37 +234,42 @@ public:
 
 	// Gets if the image was found in parameter DB
 	bool IsInParamDB() const { return m_bInParamDB; }
+	// Disable/enable dimming with the set dim rects (default is enabled)
+	void EnableDimming(bool bEnable);
 
-	// Sets if the image is in the paramter DB (called after the user saves/deletes the image from param DB)
+	// Sets that this image is now in the parameter DB or is removed from the parameter DB
+	// (called after the user saves/deletes the image from param DB)
 	void SetIsInParamDB(bool bSet) { m_bInParamDB = bSet; }
 
-	// Gets the EXIF data block (including the APP1 marker as first two bytes) of the image if any
+	// Gets the EXIF data block (including the APP1 marker in the first two bytes) of the image. Returns NULL if none.
 	void* GetEXIFData() { return m_pEXIFData; }
 
 	// Gets the size of the EXIF data block in bytes, including the APP1 marker (2 bytes)
 	int GetEXIFDataLength() { return m_nEXIFSize; }
 
+	// Gets the EXIF reader for this image if the image contains EXIF data, NULL if not.
 	CEXIFReader* GetEXIFReader() { return m_pEXIFReader; }
 
-	// Gets the image format this image was originally created from
+	// Gets the image format this image has originally
 	EImageFormat GetImageFormat() const { return m_eImageFormat; }
 
-    // Gets if this image is part of an animation (GIF)
-    bool IsAnimation() const { return m_bIsAnimation; }
+	// Gets if this image is part of an animation (animated GIF)
+	bool IsAnimation() const { return m_bIsAnimation; }
 
-    // Gets the frame index if this is a multiframe image, 0 otherwise
-    int FrameIndex() const { return m_nFrameIndex; }
+	// Gets the frame index if this is a multiframe image, 0 otherwise
+	int FrameIndex() const { return m_nFrameIndex; }
 
-    // Gets the number of frames for multiframe images, 1 otherwise
-    int NumberOfFrames() const { return m_nNumberOfFrames; }
+	// Gets the number of frames for multiframe images, 1 otherwise
+	int NumberOfFrames() const { return m_nNumberOfFrames; }
 
+	// Gets the frame time in milliseconds for animations (animated GIF)
 	// Defaults to 100ms for frame times <=10, to match behavior of web browsers
 	int FrameTimeMs() const { return m_nFrameTimeMs <= 10 ? 100 : m_nFrameTimeMs; }
 
-	// Gets if this image was created from the clipboard
+	// Gets if this image was created by pasting from clipboard
 	bool IsClipboardImage() const { return m_eImageFormat == IF_CLIPBOARD; }
 
-	// Gets if the rotation is given by EXIF
+	// Gets if the rotation is given by EXIF data
 	bool IsRotationByEXIF() const { return m_bRotationByEXIF; }
 
 	// Debug: Ticks (millseconds) of the last operation
@@ -182,7 +279,7 @@ public:
 	void SetLoadTickCount(double tc) { m_dLoadTickCount = tc; }
 	double GetLoadTickCount() { return m_dLoadTickCount; }
 
-	// Sets and gets the JPEG comment of this image (COM marker)
+	// Sets and gets the JPEG comment of this image (COM marker).
 	void SetJPEGComment(LPCTSTR sComment) { m_sJPEGComment = CString(sComment); }
 	LPCTSTR GetJPEGComment() { return m_sJPEGComment; }
 
@@ -214,13 +311,13 @@ private:
 	int m_nOriginalChannels;
 	__int64 m_nPixelHash;
 	EImageFormat m_eImageFormat;
-    TJSAMP m_eJPEGChromoSampling;
+	TJSAMP m_eJPEGChromoSampling;
 
-    // multiframe and GIF animation related data
-    bool m_bIsAnimation;
-    int m_nFrameIndex;
-    int m_nNumberOfFrames;
-    int m_nFrameTimeMs;
+	// multiframe and GIF animation related data
+	bool m_bIsAnimation;
+	int m_nFrameIndex;
+	int m_nNumberOfFrames;
+	int m_nFrameTimeMs;
 
 	// thumbnail image for histogram of the processed image
 	// this thumbnail is needed because not the whole image is processed, only the visible section,
@@ -247,8 +344,11 @@ private:
 	CPoint m_initialOffsets;
 
 	bool m_bCropped; // Image has been cropped
-	bool m_bIsDestructivlyProcessed; // Original image pixels destructively processed (i.e. cropped or size changed)
+	bool m_bIsDestructivelyProcessed; // Original image pixels destructively processed (i.e. cropped or size changed)
 	uint32 m_nRotation; // current rotation angle
+/*
+	CRotationParams m_rotationParams; // current rotation
+*/
 	bool m_bRotationByEXIF; // is the rotation given by EXIF
 
 	// This is the geometry that was requested during last GetDIB() call
@@ -259,11 +359,13 @@ private:
 
 	bool m_bInParamDB; // true if image found in param DB
 	bool m_bFirstReprocessing; // true if never reprocessed before, some optimizations may be not done initially
+	CDimRect* m_pDimRects;
 	int m_nNumDimRects;
+	bool m_bEnableDimming;
 
 	double m_dLastOpTickCount;
 	double m_dLoadTickCount;
-/*
+
 	// stuff needed to perform LUT and LDC processing
 	uint8* m_pLUTAllChannels; // for global contrast and brightness correction
 	uint8* m_pLUTRGB; // B,G,R three channel LUT
@@ -272,13 +374,12 @@ private:
 	bool m_bLDCOwned;
 	float m_fColorCorrectionFactors[6];
 	float m_fColorCorrectionFactorsNull[6];
-*/
-	// Internal GetDIB() implementation combining unsharp mask and (low quality= rotation with GetDIB().
+
+	// Internal GetDIB() implementation combining unsharp mask and (low quality) rotation with GetDIB().
+	// pUnsharpMaskParams and pTrapezoid can be null if not used.
 	// bUsingOriginalDIB is output parameter and contains if the cached DIB could be used and no processing has been done
 	// When dRotation is not 0.0, PFLAG_HighQualityResampling must not be set
-	void* GetDIBInternal(CSize fullTargetSize,
-						 CSize clippingSize,
-						 CPoint targetOffset,
+	void* GetDIBInternal(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
 						 EProcessingFlags eProcFlags,
 						 bool& bParametersChanged);
 
@@ -288,7 +389,8 @@ private:
 		EProcessingFlags eProcFlags, EResizeType eResizeType);
 
 	// Resample to given target size. Returns resampled DIB
-	void* Resample(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, EProcessingFlags eProcFlags, EResizeType eResizeType);
+	void* Resample(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, 
+		EProcessingFlags eProcFlags, EResizeType eResizeType);
 
 	// pCachedTargetDIB is a pointer at the caller side holding the old processed DIB.
 	// Returns a pointer to DIB to be used (either pCachedTargetDIB or pSourceDIB)
@@ -315,14 +417,18 @@ private:
 
 	// Return size of original image if the image would be rotated the given amount
 	CSize SizeAfterRotation(int nRotation);
-
+	//CSize SizeAfterRotation(const CRotationParams& rotationParams);
+/*
+	// Gets the new size of the image after doing a free rotation
+	static CSize GetSizeAfterFreeRotation(const CSize& sourceSize, double dRotation, bool bAutoCrop, bool bKeepAspectRatio, CPoint & offset);
+*/
 	// Get if from source to target size it is down or upsampling
 	EResizeType GetResizeType(CSize targetSize, CSize sourceSize);
 
 	// Gets the rotation from EXIF if available
 	int GetRotationFromEXIF(int nOrigRotation);
 
-	// Sets the m_bIsDestructivlyProcessed flag to true and resets rotation
+	// Sets the m_bIsDestructivelyProcessed flag to true and resets rotation
 	void MarkAsDestructivelyProcessed();
 
 	// Called when the original pixels have changed (rotate, crop, unsharp mask), all cached pixel data gets invalid

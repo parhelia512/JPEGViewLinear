@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "XMMImage.h"
 #include "Helpers.h"
+#include "LookupTables.h"	// needed for sRGB8_LinRGB12[256]
 
 CFloatImage::CFloatImage(int nWidth, int nHeight, int padding)
 	{

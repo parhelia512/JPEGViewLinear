@@ -73,7 +73,7 @@ private:
 		int RequestHandle;
 		CJPEGImage* Image;
 		CProcessParams ProcessParams;
-		bool OutOfMemory;
+		bool OutOfMemory;  // load caused an out of memory condition
 		bool ExceptionError;  // an unhandled exception caused the load to fail
 	};
 
@@ -96,21 +96,30 @@ private:
 	CString m_sLastFileName; // Only for GDI+ files
 	CString m_sLastWebpFileName; // Only for animated WebP files
 	CString m_sLastPngFileName; // Only for animated PNG files
+	CString m_sLastJxlFileName; // Only for animated JPEG XL files
+//	CString m_sLastAvifFileName; // Only for animated AVIF files
 
 	virtual void ProcessRequest(CRequestBase& request);
 	virtual void AfterFinishProcess(CRequestBase& request);
 	void DeleteCachedGDIBitmap();
 	void DeleteCachedWebpDecoder();
 	void DeleteCachedPngDecoder();
+	void DeleteCachedJxlDecoder();
+//	void DeleteCachedAvifDecoder();
 
 	void ProcessReadJPEGRequest(CRequest * request);
 	void ProcessReadPNGRequest(CRequest * request);
 	void ProcessReadBMPRequest(CRequest * request);
 	void ProcessReadTGARequest(CRequest * request);
 	void ProcessReadWEBPRequest(CRequest * request);
-	void ProcessReadRAWRequest(CRequest * request);
+	void ProcessReadJXLRequest(CRequest* request);
+//	void ProcessReadAVIFRequest(CRequest* request);
+//	void ProcessReadHEIFRequest(CRequest * request);
+//	void ProcessReadQOIRequest(CRequest * request);
+//	void ProcessReadPSDRequest(CRequest * request);
+//	void ProcessReadRAWRequest(CRequest * request);
 	void ProcessReadGDIPlusRequest(CRequest * request);
-    //void ProcessReadWICRequest(CRequest* request);
+//	void ProcessReadWICRequest(CRequest* request);
 
 	static void SetFileDependentProcessParams(CRequest * request);
 	static bool ProcessImageAfterLoad(CRequest * request);

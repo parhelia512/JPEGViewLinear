@@ -40,15 +40,17 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 		return NULL;
 	}
 
-
 	// Search if we have the requested image already present or in progress
 	CImageRequest* pRequest = FindRequest(strFileName, nFrameIndex);
 	bool bDirectionChanged = eDirection != m_eOldDirection || eDirection == TOGGLE;
 	bool bRemoveAlsoActiveRequests = bDirectionChanged; // if direction changed, all read-ahead requests are wrongly guessed
 	bool bWasOutOfMemory = false;
 	m_eOldDirection = eDirection;
+/*GF*/	TCHAR debugtext[512];
 
 	if (pRequest == NULL) {
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::RequestImage() -> StartNewRequest(%s, %d, processParams)"), strFileName, nFrameIndex);
+/*GF*/	::OutputDebugStringW(debugtext);
 		// no request pending for this file, add to request queue and start async
 		pRequest = StartNewRequest(strFileName, nFrameIndex, processParams);
 		// wait with read ahead when direction changed - maybe user just wants to re-see last image
@@ -58,11 +60,9 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 		}
 	}
 
-/*GF*/	TCHAR debugtext[512];
-
 	// wait for request if not yet ready
 	if (!pRequest->Ready) {
-/*GF*/	swprintf(debugtext,255,TEXT("Waiting for request:  %s"), pRequest->FileName);
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::RequestImage() waiting for image to finish loading from disk:  %s"), pRequest->FileName);
 /*GF*/	::OutputDebugStringW(debugtext);
 
 		::WaitForSingleObject(pRequest->EventFinished, INFINITE);
@@ -76,7 +76,7 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 			//	processParams.RotationParams.Rotation, processParams.Zoom, processParams.Offsets, 
 			//	CSize(processParams.TargetWidth, processParams.TargetHeight), processParams.MonitorSize);
 		}
-/*GF*/	swprintf(debugtext,255,TEXT("Found in cache:  %s"), pRequest->FileName);
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::RequestImage() found in cache:  %s"), pRequest->FileName);
 /*GF*/	::OutputDebugStringW(debugtext);
 	}
 
@@ -208,6 +208,10 @@ CJPEGProvider::CImageRequest* CJPEGProvider::FindRequest(LPCTSTR strFileName, in
 }
 
 CJPEGProvider::CImageRequest* CJPEGProvider::StartRequestAndWaitUntilReady(LPCTSTR sFileName, int nFrameIndex, const CProcessParams & processParams) {
+/*GF*/	TCHAR debugtext[512];
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::StartRequestAndWaitUntilReady() -> StartNewRequest(%s, %d, processParams)"), sFileName, nFrameIndex);
+/*GF*/	::OutputDebugStringW(debugtext);
+
 	CImageRequest* pRequest = StartNewRequest(sFileName, nFrameIndex, processParams);
 	::WaitForSingleObject(pRequest->EventFinished, INFINITE);
 	GetLoadedImageFromWorkThread(pRequest);
@@ -230,6 +234,9 @@ void CJPEGProvider::StartNewRequestBundle(CFileList* pFileList, EReadAheadDirect
 //				paramsCopied.ProcFlags = SetProcessingFlag(paramsCopied.ProcFlags, PFLAG_NoProcessingAfterLoad, false);
 //				StartNewRequest(sFileName, nFrameIndex, paramsCopied);
 //			} else {
+/*GF*/			TCHAR debugtext[512];
+/*GF*/			swprintf(debugtext,255,TEXT("CJPEGProvider::StartNewRequestBundle() -> StartNewRequest(%s, %d, processParams)"), sFileName, nFrameIndex);
+/*GF*/			::OutputDebugStringW(debugtext);
 				StartNewRequest(sFileName, nFrameIndex, processParams);
 //			}
 		}
@@ -237,10 +244,6 @@ void CJPEGProvider::StartNewRequestBundle(CFileList* pFileList, EReadAheadDirect
 }
 
 CJPEGProvider::CImageRequest* CJPEGProvider::StartNewRequest(LPCTSTR sFileName, int nFrameIndex, const CProcessParams & processParams) {
-/*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("Start new request:  %s"), sFileName);
-/*GF*/	::OutputDebugStringW(debugtext);
-
 	CImageRequest* pRequest = new CImageRequest(sFileName, nFrameIndex);
 	m_requestList.push_back(pRequest);
 	pRequest->HandlingThread = SearchThreadForNewRequest();
@@ -251,16 +254,16 @@ CJPEGProvider::CImageRequest* CJPEGProvider::StartNewRequest(LPCTSTR sFileName, 
 
 void CJPEGProvider::GetLoadedImageFromWorkThread(CImageRequest* pRequest) {
 	if (pRequest->HandlingThread != NULL) {
-/*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("Finished request:  %s"), pRequest->FileName);
-/*GF*/	::OutputDebugStringW(debugtext);
-
 		CImageData imageData = pRequest->HandlingThread->GetLoadedImage(pRequest->Handle);
 		pRequest->Image = imageData.Image;
 		pRequest->OutOfMemory = imageData.IsRequestFailedOutOfMemory;
 		pRequest->ExceptionError = imageData.IsRequestFailedException;
 		pRequest->Ready = true;
 		pRequest->HandlingThread = NULL;
+
+/*GF*/	TCHAR debugtext[512];
+/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::GetLoadedImageFromWorkThread() finished loading from disk:  %s"), pRequest->FileName);
+/*GF*/	::OutputDebugStringW(debugtext);
 	}
 }
 
@@ -305,7 +308,9 @@ void CJPEGProvider::RemoveUnusedImages(bool bRemoveAlsoActiveRequests) {
 				// remove the readahead images - if we get here with read ahead, the strategy was wrong and
 				// the read ahead image is not used.
 				if ((*iter)->AccessTimeStamp == nTimeStampToRemove || IsDestructivelyProcessed((*iter)->Image)) {
+#ifdef DEBUG
 					::OutputDebugString(_T("Delete request: ")); ::OutputDebugString((*iter)->FileName); ::OutputDebugString(_T("\n"));
+#endif
 					DeleteElementAt(iter);
 					bRemoved = true;
 					break;
@@ -362,5 +367,5 @@ void CJPEGProvider::DeleteElement(CImageRequest* pRequest) {
 }
 
 bool CJPEGProvider::IsDestructivelyProcessed(CJPEGImage* pImage) {
-	return pImage != NULL && pImage->IsDestructivlyProcessed();
+	return pImage != NULL && pImage->IsDestructivelyProcessed();
 }

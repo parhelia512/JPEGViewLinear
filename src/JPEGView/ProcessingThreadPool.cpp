@@ -80,9 +80,16 @@ bool CProcessingThreadPool::Process(CProcessingRequest* pRequest) {
 	int nTargetCY = pRequest->ClippedTargetSize.cy;
 	if (m_nNumThreads == 0) {
 		CProcessingThread::DoProcess(pRequest, 0, nTargetCY);
+/* Debugging */ double dTotalTickCount = Helpers::GetExactTickCount() - dStartTickCount;
+/* Debugging */ swprintf(debugtext,255,TEXT("CProcessingThreadPool::Process() request finished in %f ms using 1 worker thread"), dTotalTickCount);
+/* Debugging */ ::OutputDebugStringW(debugtext);
 	} else {
-		if (nTargetCX * nTargetCY < 100000 || nTargetCY <= 12) {
+		//if (nTargetCX * nTargetCY < 100000 || nTargetCY <= 12) {
+		if (nTargetCX * nTargetCY < 100000 || nTargetCY < 2 * pRequest->StripPadding) { // https://github.com/sylikc/jpegview/pull/290
 			CProcessingThread::DoProcess(pRequest, 0, nTargetCY);
+/* Debugging */ double dTotalTickCount = Helpers::GetExactTickCount() - dStartTickCount;
+/* Debugging */ swprintf(debugtext,255,TEXT("CProcessingThreadPool::Process() request finished in %f ms using 1 worker thread"), dTotalTickCount);
+/* Debugging */ ::OutputDebugStringW(debugtext);
 		} else {
 			// Important: All slices must have a height dividable by 'StripPadding', except the last one
 			int nNumThreadsUsed = m_nNumThreads + 1; // we also use the calling thread, thus +1
@@ -90,6 +97,7 @@ bool CProcessingThreadPool::Process(CProcessingRequest* pRequest) {
 			while ((nSliceCY = ~(pRequest->StripPadding - 1) & (nTargetCY / nNumThreadsUsed)) < pRequest->StripPadding) {
 				nNumThreadsUsed--;
 			}
+			assert(nNumThreadsUsed > 1);	// https://github.com/sylikc/jpegview/pull/290
 			int nLastCY = nTargetCY - (nNumThreadsUsed - 1)*nSliceCY;
 			volatile LONG nRequestThreadCounter = nNumThreadsUsed - 1;
 			int nCurrCY = 0;
@@ -108,13 +116,12 @@ bool CProcessingThreadPool::Process(CProcessingRequest* pRequest) {
 				pAllWrappedRequests[i]->Deleted = true; // thread pool threads will remove the requests from the queue
 			}
 			delete [] pAllWrappedRequests;
-		}
-	}
 
 /* Debugging */ double dTotalTickCount = Helpers::GetExactTickCount() - dStartTickCount;
-/* Debugging */ swprintf(debugtext,255,TEXT("CProcessingThreadPool::Process() request finished in %f ms"), dTotalTickCount);
+/* Debugging */ swprintf(debugtext,255,TEXT("CProcessingThreadPool::Process() request finished in %f ms using %d worker threads"), dTotalTickCount, nNumThreadsUsed-1);
 /* Debugging */ ::OutputDebugStringW(debugtext);
-
+		}
+	}
 	return pRequest->Success;
 }
 
@@ -146,14 +153,14 @@ void CProcessingThread::DoProcess(CProcessingRequest* pRequest, int nOffsetY, in
 	int nCurrentSizeY = nStripHeight;
 	while (nSizeProcessed < nSizeY) {
 		int nCurrentOffsetY = nOffsetY + nSizeProcessed;
-			if (!pRequest->ProcessStrip(nCurrentOffsetY, nCurrentSizeY)) {
+		if (!pRequest->ProcessStrip(nCurrentOffsetY, nCurrentSizeY)) {
 			pRequest->Success = false;
 			break;
-			}
+		}
 		nSizeProcessed += nCurrentSizeY;
 		nCurrentSizeY = min(nStripHeight, nSizeY - nSizeProcessed);
-		}
 	}
+}
 
 void CProcessingThread::ProcessRequest(CRequestBase& request) {
 	CWrappedRequest* pWrappedRequest = (CWrappedRequest*)&request;

@@ -32,30 +32,6 @@ static bool IsAlphaChannelValid(int width, int height, uint32* pImageData)
 	return pixel != 0;
 }
 
-static inline uint32 AlphaBlendBackground(uint32 pixel, uint32 backgroundColor)
-{
-	uint32 alpha = pixel & ALPHA_OPAQUE;
-	if (alpha == 0) {
-		return backgroundColor;
-	} else if (alpha == ALPHA_OPAQUE)
-	{
-		return pixel;
-	} else {
-		uint8 b = GetBValue(pixel);
-		uint8 g = GetGValue(pixel);
-		uint8 r = GetRValue(pixel);
-		uint8 bg_r = GetRValue(backgroundColor);
-		uint8 bg_g = GetGValue(backgroundColor);
-		uint8 bg_b = GetBValue(backgroundColor);
-		uint8 a = alpha >> 24;
-		uint8 one_minus_a = 255 - a;
-		return
-			((r * a + bg_r * one_minus_a) >> 8) + 
-			(((g * a + bg_g * one_minus_a) >> 8) << 8) + 
-			(((b * a + bg_b * one_minus_a) >> 8) << 16) + ALPHA_OPAQUE;
-	}
-}
-
 
 CJPEGImage* CReaderTGA::ReadTgaImage(LPCTSTR strFileName, COLORREF backgroundColor, bool& bOutOfMemory) {
 
@@ -374,7 +350,7 @@ CJPEGImage* CReaderTGA::ReadTgaImage(LPCTSTR strFileName, COLORREF backgroundCol
 		{
 			for (int i = 0; i < width*height; i++)
 			{
-				*pImage32++ = AlphaBlendBackground(*pImage32, backgroundColor | ALPHA_OPAQUE);
+				*pImage32++ = Helpers::AlphaBlendBackground(*pImage32, backgroundColor | ALPHA_OPAQUE);
 			}
 		}
 		else

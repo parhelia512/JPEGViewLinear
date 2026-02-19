@@ -76,11 +76,25 @@ namespace HelpersGUI {
 			default:
 				return;
 			}
-		if (bOutOfMemory)
-			{
+		if (bOutOfMemory) {
 			_tcscat_s(buff, BUF_LEN, _T("\n"));
-			_tcscat_s(buff, BUF_LEN, _T("Reason: Not enough memory available"));
+			_tcscat_s(buff, BUF_LEN, CString(_T("Reason:")) + _T(" ") + _T("Not enough memory available"));
+		} else if (nFileLoadError == FileLoad_LoadError) {
+			LPCTSTR sEnding = _tcsrchr(sFailedFileName, _T('.'));
+			if (sEnding != NULL) {
+				sEnding += 1;
+				if (_tcsicmp(sEnding, _T("JXL")) == 0 ||
+					_tcsicmp(sEnding, _T("HEIF")) == 0 ||
+					_tcsicmp(sEnding, _T("HEIC")) == 0 ||
+					_tcsicmp(sEnding, _T("AVIF")) == 0) {
+
+					if (bExceptionError) {
+						_tcscat_s(buff, BUF_LEN, _T("\n"));
+						_tcscat_s(buff, BUF_LEN, _T("Decoding this format requires the Microsoft Visual C++ Redistributable."));
+					}
+				}
 			}
+		}
 		dc.DrawText(buff, -1, &rectText, DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
 		}
 	}
