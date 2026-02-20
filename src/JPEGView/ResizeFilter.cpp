@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-// We cannot enlarge to a factor above the number of kernels without artefacts
+// We cannot enlarge to a factor above the number of kernels without artifacts
 #define NUM_KERNELS_RESIZE 128
 #define NUM_KERNELS_RESIZE_LOG2 7
 
@@ -221,8 +221,9 @@ CResizeFilter::~CResizeFilter(void) {
 }
 
 bool CResizeFilter::ParametersMatch(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType) {
-	if (nSourceSize == m_nSourceSize && nTargetSize == m_nTargetSize && eFilter == m_eFilter && m_filterSIMDType == filterSIMDType) {
-		return true;
+	if (nSourceSize == m_nSourceSize && nTargetSize == m_nTargetSize && 
+		eFilter == m_eFilter && m_filterSIMDType == filterSIMDType) {
+			return true;
 	} else {
 		return false;
 	}
@@ -235,7 +236,7 @@ bool CResizeFilter::ParametersMatch(int nSourceSize, int nTargetSize, EFilterTyp
 void CResizeFilter::CalculateFilterKernels() {
 	CalculateFilterParams(m_eFilter);
 
-	if ((m_nTargetSize > m_nSourceSize && m_eFilter != Filter_Upsampling_Bicubic) ||
+	if ((m_nTargetSize > m_nSourceSize && m_eFilter != Filter_Upsampling_Bicubic) || 
 		m_nTargetSize == 0 || m_nSourceSize > 65535 || m_nTargetSize > 65535) {
 		return;
 	}
@@ -481,8 +482,9 @@ CResizeFilterCache& CResizeFilterCache::This() {
 	return *sm_instance;
 }
 
-CResizeFilterCache::CResizeFilterCache() {
-	memset(&m_csList, 0, sizeof(CRITICAL_SECTION));
+CResizeFilterCache::CResizeFilterCache()
+	: m_csList{ 0 }
+{
 	::InitializeCriticalSection(&m_csList);
 }
 
@@ -549,10 +551,11 @@ void CResizeFilterCache::ReleaseFilter(const CResizeFilter& filter) {
 // CGaussFilter
 //////////////////////////////////////////////////////////////////////////////////////
 
-CGaussFilter::CGaussFilter(int nSourceSize, double dRadius) {
+CGaussFilter::CGaussFilter(int nSourceSize, double dRadius)
+	: m_kernels{ 0 }
+{
 	m_nSourceSize = nSourceSize;
 	m_dRadius = dRadius;
-	memset(&m_kernels, 0, sizeof(m_kernels));
 
 	CalculateKernels();
 }

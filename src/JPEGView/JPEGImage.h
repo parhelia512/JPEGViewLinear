@@ -180,7 +180,7 @@ public:
 
 	// Verify that the image is currently rotated by the given angle and rotate the image if not. nRotation must be 0, 90, 180, 270
 	bool VerifyRotation(int nRotation);
-	//bool VerifyRotation(const CRotationParams& rotationParams);
+	bool VerifyRotation(const CRotationParams& rotationParams);
 
 	// Mirrors the image horizontally or vertically.
 	// Applies to original image!
@@ -215,6 +215,12 @@ public:
 	// Gets the image processing flags last used to process an image
 	EProcessingFlags GetLastProcessFlags() const { return m_eProcFlags; }
 	
+	// Gets the image processing parameters as set as default (may varies from file to file)
+	const CImageProcessingParams& GetInitialProcessParams() const { return m_imageProcParamsInitial; }
+
+	// Gets the image processing parameters last used to process an image
+	const CImageProcessingParams& GetLastProcessParams() const { return m_imageProcParams; } 
+
 	// Gets the rotation as set as default (may varies from file to file)
 	int GetInitialRotation() const { return m_nInitialRotation; }
 
@@ -224,22 +230,39 @@ public:
 	// Gets the offsets as set as default (can vary from file to file)
 	CPoint GetInitialOffsets() const { return m_initialOffsets; }
 
+	// Sets the initial parameters to the given values.
+	void SetInitialParameters(const CImageProcessingParams& imageProcParams, EProcessingFlags procFlags, int nRotation, double dZoom, CPoint offsets);
+
+	// Restores the initial parameters to the parameters dependent on the directory (not the file)
+	// Outputs the processing flags set for this directory
+	void RestoreInitialParameters(LPCTSTR sFileName, const CImageProcessingParams& imageProcParams, 
+		EProcessingFlags & procFlags, int nRotation, double dZoom, CPoint offsets, CSize targetSize, CSize monitorSize);
+
+	// Gets the processing parameters and flags according to param DB or file path.
+	void GetFileParams(LPCTSTR sFileName, EProcessingFlags& eFlags, CImageProcessingParams& params) const;
+
 	// To be called after creation of the object to initialize the initial processing parameters.
 	// Input are the global defaults for the processing parameters, output (in pParams) are the
 	// processing parameters for this file (maybe different from the global ones)
 	void SetFileDependentProcessParams(LPCTSTR sFileName, CProcessParams* pParams);
 
-	// Sets the regions of the returned DIB that are dimmed out (NULL for no dimming)
-	void SetDimRects(const CDimRect* dimRects, int nSize);
+	// Sets the regions of the returned DIB that are dimmed out (set dimRects to NULL for no dimming)
+	void SetDimRects(const CDimRect* dimRects, int numberOfRects);
+	// Disable/enable dimming with the set dim rects (default is enabled)
+	void EnableDimming(bool bEnable);
 
 	// Gets if the image was found in parameter DB
 	bool IsInParamDB() const { return m_bInParamDB; }
-	// Disable/enable dimming with the set dim rects (default is enabled)
-	void EnableDimming(bool bEnable);
 
 	// Sets that this image is now in the parameter DB or is removed from the parameter DB
 	// (called after the user saves/deletes the image from param DB)
 	void SetIsInParamDB(bool bSet) { m_bInParamDB = bSet; }
+
+	// Gets if zoom and offset values are stored for this image in the parameter DB
+	bool HasZoomStoredInParamDB() const { return m_bHasZoomStoredInParamDB; }
+
+	// Gets the factor to lighten shadows based on sunset and nightshot detection
+	float GetLightenShadowFactor() { return m_fLightenShadowFactor; }
 
 	// Gets the EXIF data block (including the APP1 marker in the first two bytes) of the image. Returns NULL if none.
 	void* GetEXIFData() { return m_pEXIFData; }
@@ -252,6 +275,11 @@ public:
 
 	// Gets the image format this image has originally
 	EImageFormat GetImageFormat() const { return m_eImageFormat; }
+
+	// Gets if the image format is one of the formats supported by GDI+
+	bool IsGDIPlusFormat() const {
+		return m_eImageFormat == IF_JPEG || m_eImageFormat == IF_WindowsBMP || m_eImageFormat == IF_PNG || m_eImageFormat == IF_TIFF || m_eImageFormat == IF_GIF;
+	}
 
 	// Gets if this image is part of an animation (animated GIF)
 	bool IsAnimation() const { return m_bIsAnimation; }
@@ -272,13 +300,6 @@ public:
 	// Gets if the rotation is given by EXIF data
 	bool IsRotationByEXIF() const { return m_bRotationByEXIF; }
 
-	// Debug: Ticks (millseconds) of the last operation
-	double LastOpTickCount() const { return m_dLastOpTickCount; }
-
-	// Debug: Loading time of image in ms
-	void SetLoadTickCount(double tc) { m_dLoadTickCount = tc; }
-	double GetLoadTickCount() { return m_dLoadTickCount; }
-
 	// Sets and gets the JPEG comment of this image (COM marker).
 	void SetJPEGComment(LPCTSTR sComment) { m_sJPEGComment = CString(sComment); }
 	LPCTSTR GetJPEGComment() { return m_sJPEGComment; }
@@ -288,6 +309,14 @@ public:
 
 	// Converts the target offset from 'center of image' based format to pixel coordinate format 
 	static CPoint ConvertOffset(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset);
+
+
+	// Debug: Ticks (milliseconds) of the last operation
+	double LastOpTickCount() const { return m_dLastOpTickCount; }
+
+	// Debug: Loading time of image in ms
+	void SetLoadTickCount(double tc) { m_dLoadTickCount = tc; }
+	double GetLoadTickCount() { return m_dLoadTickCount; }
 
 private:
 
@@ -319,6 +348,9 @@ private:
 	int m_nNumberOfFrames;
 	int m_nFrameTimeMs;
 
+	// cached thumbnail image, created on first request
+	CJPEGImage* m_pThumbnail;
+
 	// thumbnail image for histogram of the processed image
 	// this thumbnail is needed because not the whole image is processed, only the visible section,
 	// however the histogram must be calculated over the whole processed image
@@ -334,37 +366,52 @@ private:
 	void* m_pDIBPixels;
 	void* m_pLastDIB; // one of the pointers above
 
+	// Cached gray and smoothed gray image for unsharp masking
+	int16* m_pGrayImage;
+	int16* m_pSmoothGrayImage;
+
 	// Image processing parameters and flags during last call to GetDIB()
+	CImageProcessingParams m_imageProcParams;
 	EProcessingFlags m_eProcFlags;
+	CUnsharpMaskParams m_unsharpMaskParams;
+	bool m_bUnsharpMaskParamsValid;
 
 	// Initial image processing parameters and flags, as set with SetFileDependentProcessParams()
+	CImageProcessingParams m_imageProcParamsInitial;
 	EProcessingFlags m_eProcFlagsInitial;
 	int m_nInitialRotation;
 	double m_dInitialZoom;
 	CPoint m_initialOffsets;
+	float m_fLightenShadowFactor;
 
 	bool m_bCropped; // Image has been cropped
 	bool m_bIsDestructivelyProcessed; // Original image pixels destructively processed (i.e. cropped or size changed)
-	uint32 m_nRotation; // current rotation angle
+	bool m_bIsProcessedNoParamDB;
 /*
 	CRotationParams m_rotationParams; // current rotation
 */
+	uint32 m_nRotation;	// GF: Todo: Switch to m_rotationParams
 	bool m_bRotationByEXIF; // is the rotation given by EXIF
 
 	// This is the geometry that was requested during last GetDIB() call
 	CSize m_FullTargetSize; 
 	CSize m_ClippingSize; // this is the size of the DIB
 	CPoint m_TargetOffset;
-	double m_dRotationLQ; // low quality rotation angle
+	double m_dRotationLQ; // low quality rotation angle (radians)
+	CTrapezoid m_trapezoid;
+	bool m_bTrapezoidValid;
 
 	bool m_bInParamDB; // true if image found in param DB
+	bool m_bHasZoomStoredInParamDB; // true if image in param DB and entry contains zoom and offset values
 	bool m_bFirstReprocessing; // true if never reprocessed before, some optimizations may be not done initially
 	CDimRect* m_pDimRects;
 	int m_nNumDimRects;
 	bool m_bEnableDimming;
+	bool m_bShowGrid;
 
 	double m_dLastOpTickCount;
 	double m_dLoadTickCount;
+	double m_dUnsharpMaskTickCount;
 
 	// stuff needed to perform LUT and LDC processing
 	uint8* m_pLUTAllChannels; // for global contrast and brightness correction
@@ -416,8 +463,8 @@ private:
 	EProcessingFlags GetProcFlagsIncludeExcludeFolders(LPCTSTR sFileName, EProcessingFlags procFlags) const;
 
 	// Return size of original image if the image would be rotated the given amount
-	CSize SizeAfterRotation(int nRotation);
 	//CSize SizeAfterRotation(const CRotationParams& rotationParams);
+	CSize SizeAfterRotation(int nRotation);
 /*
 	// Gets the new size of the image after doing a free rotation
 	static CSize GetSizeAfterFreeRotation(const CSize& sourceSize, double dRotation, bool bAutoCrop, bool bKeepAspectRatio, CPoint & offset);

@@ -2,10 +2,11 @@
 
 #include "Helpers.h"
 #include "FileList.h"
+#include "UserCommand.h"
 #include "ProcessParams.h"
-#include <string>
 #include "HashCompareLPCTSTR.h"
 #include <hash_map>
+
 
 typedef stdext::hash_map<LPCTSTR, LPCTSTR, CHashCompareLPCTSTR> IniHashMap;
 
@@ -20,7 +21,6 @@ public:
 
 	// The methods correspond to the INI file settings
 	bool StoreToEXEPath() { return m_bStoreToEXEPath; }
-
 	double Contrast() { return m_dContrast; }
 	double Gamma() { return m_dGamma; }
 	double Saturation() { return m_dSaturation; }
@@ -41,22 +41,18 @@ public:
 	bool ShowZoomNavigator() { return m_bShowZoomNavigator; }
 	bool ShowFullScreen() { return m_bShowFullScreen; }
 	bool AutoFullScreen() { return m_bAutoFullScreen; }
-/*
 	float BlendFactorNavPanel() { return m_fBlendFactorNavPanel; }
 	float ScaleFactorNavPanel() { return m_fScaleFactorNavPanel; }
 	bool KeepParams() { return m_bKeepParams; }
 	LPCTSTR Language() { return m_sLanguage; }
-*/
 	Helpers::CPUType AlgorithmImplementation() { return m_eCPUAlgorithm; }
 	int NumberOfCoresToUse() { return m_nNumCores; }
 	EFilterType DownsamplingFilter() { return m_eDownsamplingFilter; }
 	Helpers::ESorting Sorting() { return m_eSorting; }
 	bool IsSortedAscending() { return m_bIsSortedAscending; }
 	Helpers::ENavigationMode Navigation() { return m_eNavigation; }
-/*
 	bool NavigateWithMouseWheel() { return m_bNavigateMouseWheel; }
 	double MouseWheelZoomSpeed() { return m_dMouseWheelZoomSpeed; }
-*/
 	Helpers::EAutoZoomMode AutoZoomMode() { return m_eAutoZoomMode; }
 	Helpers::EAutoZoomMode AutoZoomModeFullscreen() { return m_eAutoZoomModeFullscreen; }
 	int DisplayMonitor() { return m_nDisplayMonitor; }
@@ -72,61 +68,46 @@ public:
 	CImageProcessingParams LandscapeModeParams(const CImageProcessingParams& templParams);
 	bool LandscapeMode() { return m_bLandscapeMode; }
 	int MaxSlideShowFileListSize() { return m_nMaxSlideShowFileListSize; }
-/*
 	Helpers::ETransitionEffect SlideShowTransitionEffect() { return m_eSlideShowTransitionEffect; }
-*/
 	int SlideShowEffectTimeMs() { return m_nSlideShowEffectTimeMs; }
 	bool ForceGDIPlus() { return m_bForceGDIPlus; }
-/*
 	bool SingleInstance() { return m_bSingleInstance; }
 	bool SingleFullScreenInstance() { return m_bSingleFullScreenInstance; }
 	int JPEGSaveQuality() { return m_nJPEGSaveQuality; }
 	int WEBPSaveQuality() { return m_nWEBPSaveQuality; }
 	LPCTSTR DefaultSaveFormat() { return m_sDefaultSaveFormat; }
-*/
 	LPCTSTR FilesProcessedByWIC() { return m_sFilesProcessedByWIC; }
 	LPCTSTR FileEndingsRAW() { return m_sFileEndingsRAW; }
 	void AddTemporaryRAWFileEnding(LPCTSTR sEnding) { m_sFileEndingsRAW += CString(_T(";*.")) + sEnding; }
-/*
 	int DisplayFullSizeRAW() { return m_nDisplayFullSizeRAW; }
 	bool CreateParamDBEntryOnSave() { return m_bCreateParamDBEntryOnSave; }
 	bool SaveWithoutPrompt() { return m_bSaveWithoutPrompt; }
 	bool CropWithoutPromptLosslessJPEG() { return m_bCropWithoutPromptLosslessJPEG; }
 	Helpers::EDeleteConfirmation DeleteConfirmation() { return m_eDeleteConfirmation; }
 	bool AllowFileDeletion() { return m_bAllowFileDeletion; }
-*/
-	bool WrapAroundFolder() { return m_bWrapAroundFolder; }
-/*
+	bool WrapAroundFolder() { return m_bWrapAroundFolder && m_eNavigation == Helpers::NM_LoopDirectory; }
 	bool ExchangeXButtons() { return m_bExchangeXButtons; }
-*/
 	bool AutoRotateEXIF() { return m_bAutoRotateEXIF; }
 	bool UseEmbeddedColorProfiles() { return m_bUseEmbeddedColorProfiles; }
-/*
 	LPCTSTR ACCExclude() { return m_sACCExclude; }
 	LPCTSTR ACCInclude() { return m_sACCInclude; }
 	LPCTSTR LDCExclude() { return m_sLDCExclude; }
 	LPCTSTR LDCInclude() { return m_sLDCInclude; }
 	LPCTSTR CopyRenamePattern() { return m_sCopyRenamePattern; }
-*/
 	CRect DefaultWindowRect() { return m_defaultWindowRect; }
 	CRect StickyWindowRect() { return m_stickyWindowRect; }
 	bool StickyWindowSize() { return m_bStickyWindowSize; }
 	bool DefaultWndToImage() { return m_bDefaultWndToImage; }
 	bool DefaultMaximized() { return m_bDefaultMaximized; }
 	bool ExplicitWindowRect() { return m_bExplicitWindowRect; }
-/*
 	CSize DefaultFixedCropSize() { return m_DefaultFixedCropSize; }
-*/
 	COLORREF ColorBackground() { return m_colorBackground; }
-/*
 	COLORREF ColorGUI() { return m_colorGUI; }
 	COLORREF ColorHighlight() { return m_colorHighlight; }
 	COLORREF ColorSelected() { return m_colorSelected; }
 	COLORREF ColorSlider() { return m_colorSlider; }
 	COLORREF ColorFileName() { return m_colorFileName; }
-*/
 	COLORREF ColorTransparency() { return m_colorTransparency; }
-/*
 	LPCTSTR DefaultGUIFont() { return m_defaultGUIFont; }
 	LPCTSTR FileNameFont() { return m_fileNameFont; }
 	const CUnsharpMaskParams& UnsharpMaskParams() { return m_unsharpMaskParms; }
@@ -134,9 +115,7 @@ public:
 	bool RTAutoCrop() { return m_bRTAutoCrop; }
 	bool RTPreserveAspectRatio() { return m_bRTPreserveAspectRatio; }
 	LPCTSTR FileNameFormat() { return m_sFileNameFormat; }
-*/
 	bool ReloadWhenDisplayedImageChanged() { return m_bReloadWhenDisplayedImageChanged; }
-/*
 	bool AllowEditGlobalSettings() { return m_bAllowEditGlobalSettings; }
 	double PrintMargin() { return m_dPrintMargin; }
 	double DefaultPrintWidth() { return m_dDefaultPrintWidth; }
@@ -155,12 +134,9 @@ public:
 	bool WindowAlwaysOnTopOnStartup() { return m_bWindowAlwaysOnTopOnStartup; }
 
 	double ZoomPauseFactor() { return m_zoomPauseFactor; }  // while internally this is represented in doubles, using a whole number percent simplifies it for the user... configuring doubles is not user friendly at all
-*/
-/*GF*/	int MangaSinglePageVisibleHeight() { return m_nMangaSinglePageVisibleHeight; }
 
 	// Returns if a user INI file exists
 	bool ExistsUserINI();
-/*
 	// Copies the user INI file (in AppData/Roaming) from the INI file template JPEGView.ini.tpl
 	void CopyUserINIFromTemplate();
 
@@ -175,15 +151,13 @@ public:
 		Helpers::EAutoZoomMode eAutoZoomMode, Helpers::EAutoZoomMode eAutoZoomModeFullScreen,
 		bool bShowNavPanel, bool bShowFileName, bool bShowFileInfo,
 		Helpers::ETransitionEffect eSlideShowTransitionEffect);
-*/
 
-/*
 	// Saves the pattern used in the copy/rename dialog to rename files
 	void SaveCopyRenamePattern(const CString& sPattern);
-*/
+
 	// Saves the sticky window size to the INI file
 	void SaveStickyWindowRect(CRect rect);
-/*
+	
 	// Update user settings with settings from INI file template
 	void UpdateUserSettings();
 
@@ -198,7 +172,7 @@ public:
 
 	// Returns the next index for an open with entry
 	int GetNextOpenWithIndex() { return m_nNextOpenWithIndex; }
-*/
+
 	// Gets the path where the global INI file and the EXE is located
 	LPCTSTR GetEXEPath() { return m_sEXEPath; }
 
@@ -209,6 +183,9 @@ public:
 	// Get the file name (without path) of the user INI file
 	LPCTSTR GetINIFileTitle() { return m_sIniFileTitle; }
 
+/*GF*/	int MangaSinglePageVisibleHeight() { return m_nMangaSinglePageVisibleHeight; }
+/*GF*/	bool TitleBarUseFileIcon() { return m_bTitleBarUseFileIcon; }
+
 private:
 	static CSettingsProvider* sm_instance;
 	CString m_sEXEPath;
@@ -217,8 +194,8 @@ private:
 	CString m_sIniFileTitle;
 	bool m_bUserINIExists;
 	bool m_bStoreToEXEPath;
-
 	int m_nNextOpenWithIndex;
+
 	double m_dContrast;
 	double m_dGamma;
 	double m_dSaturation;
@@ -237,25 +214,20 @@ private:
 	bool m_bShowNavPanel;
 	bool m_bShowBottomPanel;
 	bool m_bShowZoomNavigator;
-
 	bool m_bShowFullScreen;
 	bool m_bAutoFullScreen;
-/*
 	float m_fBlendFactorNavPanel;
 	float m_fScaleFactorNavPanel;
 	bool m_bKeepParams;
 	CString m_sLanguage;
-*/
 	Helpers::CPUType m_eCPUAlgorithm;
 	int m_nNumCores;
 	EFilterType m_eDownsamplingFilter;
 	Helpers::ESorting m_eSorting;
 	bool m_bIsSortedAscending;
 	Helpers::ENavigationMode m_eNavigation;
-/*
 	bool m_bNavigateMouseWheel;
 	double m_dMouseWheelZoomSpeed;
-*/
 	Helpers::EAutoZoomMode m_eAutoZoomMode;
 	Helpers::EAutoZoomMode m_eAutoZoomModeFullscreen;
 	int m_nDisplayMonitor;
@@ -273,36 +245,28 @@ private:
 	Helpers::ETransitionEffect m_eSlideShowTransitionEffect;
 	int m_nSlideShowEffectTimeMs;
 	bool m_bForceGDIPlus;
-/*
 	bool m_bSingleInstance;
 	bool m_bSingleFullScreenInstance;
 	int m_nJPEGSaveQuality;
 	int m_nWEBPSaveQuality;
 	CString m_sDefaultSaveFormat;
-*/
 	CString m_sFilesProcessedByWIC;
 	CString m_sFileEndingsRAW;
-/*
 	int m_nDisplayFullSizeRAW;
 	bool m_bCreateParamDBEntryOnSave;
-*/
 	bool m_bWrapAroundFolder;
-/*
 	bool m_bSaveWithoutPrompt;
 	Helpers::EDeleteConfirmation m_eDeleteConfirmation;
 	bool m_bAllowFileDeletion;
 	bool m_bCropWithoutPromptLosslessJPEG;
 	bool m_bExchangeXButtons;
-*/
 	bool m_bAutoRotateEXIF;
 	bool m_bUseEmbeddedColorProfiles;
-/*
 	CString m_sACCExclude;
 	CString m_sACCInclude;
 	CString m_sLDCExclude;
 	CString m_sLDCInclude;
 	CString m_sCopyRenamePattern;
-*/
 	CRect m_defaultWindowRect;
 	CRect m_stickyWindowRect;
 	bool m_bDefaultMaximized;
@@ -311,15 +275,12 @@ private:
 	bool m_bExplicitWindowRect;
 	CSize m_DefaultFixedCropSize;
 	COLORREF m_colorBackground;
-/*
 	COLORREF m_colorGUI;
 	COLORREF m_colorHighlight;
 	COLORREF m_colorSelected;
 	COLORREF m_colorSlider;
 	COLORREF m_colorFileName;
-*/
 	COLORREF m_colorTransparency;
-/*
 	CString m_defaultGUIFont;
 	CString m_fileNameFont;
 	CUnsharpMaskParams m_unsharpMaskParms;
@@ -327,10 +288,7 @@ private:
 	bool m_bRTAutoCrop;
 	bool m_bRTPreserveAspectRatio;
 	CString m_sFileNameFormat;
-*/
-
 	bool m_bReloadWhenDisplayedImageChanged;
-/*
 	bool m_bAllowEditGlobalSettings;
 	double m_dPrintMargin;
 	double m_dDefaultPrintWidth;
@@ -351,15 +309,13 @@ private:
 
 	std::list<CUserCommand*> m_userCommands;
 	std::list<CUserCommand*> m_openWithCommands;
-*/
-/*GF*/	int m_nMangaSinglePageVisibleHeight;
+
 	TCHAR* m_pIniGlobalSectionBuffer;
 	TCHAR* m_pIniUserSectionBuffer;
 	IniHashMap* m_pGlobalKeys;
 	IniHashMap* m_pUserKeys;
-/*
+
 	CString GetINITemplateName();
-*/
 	void MakeSureUserINIExists();
 	CString ReplacePlaceholdersFileNameFormat(const CString& sFileNameFormat);
 	void ReadWriteableINISettings();
@@ -384,4 +340,7 @@ private:
 	void WriteInt(LPCTSTR sKey, int nValue);
 
 	CSettingsProvider(void);
+
+/*GF*/	int m_nMangaSinglePageVisibleHeight;
+/*GF*/	bool m_bTitleBarUseFileIcon;
 };

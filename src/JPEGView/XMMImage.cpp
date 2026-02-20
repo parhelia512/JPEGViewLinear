@@ -66,7 +66,7 @@ CFloatImage::~CFloatImage(void) {
 }
 
 void* CFloatImage::ConvertToDIBRGBA() const {
-	if (m_pMemory == NULL)	{
+	if (m_pMemory == NULL) {
 		return NULL;
 	}
 	uint8* pDIB = new uint8[m_nWidth*4 * m_nHeight];

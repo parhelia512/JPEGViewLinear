@@ -8,8 +8,8 @@
 //#include "LocalDensityCorr.h"
 //#include "ParameterDB.h"
 #include "EXIFReader.h"
-//#include "RawMetadata.h"
-//#include "MaxImageDef.h"
+#include "RawMetadata.h"
+#include "MaxImageDef.h"
 #include "libjpeg-turbo\include\turbojpeg.h"
 #include <math.h>
 #include <assert.h>
@@ -88,10 +88,6 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 
 	m_pRawMetadata = pRawMetadata;
 
-/*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("CJPEGImage::CJPEGImage() bIsAnimation: %d"), bIsAnimation);
-/*GF*/	::OutputDebugStringW(debugtext);
-
 	m_nPixelHash = nJPEGHash;
 	m_eImageFormat = eImageFormat;
 	m_bIsAnimation = bIsAnimation;
@@ -105,42 +101,43 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 	m_pDIBPixels = NULL;
 	m_pDIBPixelsLUTProcessed = NULL;
 	m_pLastDIB = NULL;
-//	m_pThumbnail = NULL;
-//	m_pHistogramThumbnail = NULL;
-//	m_pGrayImage = NULL;
-//	m_pSmoothGrayImage = NULL;
-
-//	m_pLUTAllChannels = NULL;
-//	m_pLUTRGB = NULL;
-//	m_pSaturationLUTs = NULL;
+	m_pThumbnail = NULL;
+	m_pHistogramThumbnail = NULL;
+	m_pGrayImage = NULL;
+	m_pSmoothGrayImage = NULL;
+	
+	m_pLUTAllChannels = NULL;
+	m_pLUTRGB = NULL;
+	m_pSaturationLUTs = NULL;
 	m_eProcFlags = PFLAG_None;
 	m_eProcFlagsInitial = PFLAG_None;
 	m_nInitialRotation = 0;
 	m_dInitialZoom = -1;
 	m_initialOffsets = CPoint(0, 0);
-//	m_pDimRects = 0;
+	m_pDimRects = 0;
 	m_nNumDimRects = 0;
-//	m_bEnableDimming = true;
-//	m_bShowGrid = false;
+	m_bEnableDimming = true;
+	m_bShowGrid = false;
 	m_bInParamDB = false;
-//	m_bHasZoomStoredInParamDB = false;
-//	m_bUnsharpMaskParamsValid = false;
+	m_bHasZoomStoredInParamDB = false;
+	m_bUnsharpMaskParamsValid = false;
 	m_bIsThumbnailImage = bIsThumbnailImage;
 //	m_pCachedProcessedHistogram = NULL;
 
 	m_bCropped = false;
 	m_bIsDestructivelyProcessed = false;
+	m_bIsProcessedNoParamDB = false;
 	m_nRotation = 0;
 	m_bRotationByEXIF = false;
 	m_bFirstReprocessing = true;
 	m_dLastOpTickCount = 0;
 	m_dLoadTickCount = 0;
-//	m_dUnsharpMaskTickCount = 0;
+	m_dUnsharpMaskTickCount = 0;
 	m_FullTargetSize = CSize(0, 0);
 	m_ClippingSize = CSize(0, 0);
 	m_TargetOffset = CPoint(0, 0);
 	m_dRotationLQ = 0.0;
-//	m_bTrapezoidValid = false;
+	m_bTrapezoidValid = false;
 /*
 	// Create the LDC object on the image
 	m_pLDC = (pLDC == NULL) ? (new CLocalDensityCorr(*this, true)) : pLDC;
@@ -153,7 +150,6 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 
 	// Initialize to INI value, may be overriden later by parameter DB
 	memcpy(m_fColorCorrectionFactors, CSettingsProvider::This().ColorCorrectionAmounts(), sizeof(m_fColorCorrectionFactors));
-	memset(m_fColorCorrectionFactorsNull, 0, sizeof(m_fColorCorrectionFactorsNull));
 */
 }
 
@@ -192,7 +188,137 @@ CJPEGImage::~CJPEGImage(void) {
 //	delete m_pRawMetadata;
 //	m_pRawMetadata = NULL;
 }
+/*
+bool CJPEGImage::CanUseLosslessJPEGTransformations() {
+	return m_eImageFormat == IF_JPEG && (m_nOrigWidth % tjMCUWidth[m_eJPEGChromoSampling]) == 0 &&
+		(m_nOrigHeight % tjMCUHeight[m_eJPEGChromoSampling]) == 0;
+}
 
+void CJPEGImage::TrimRectToMCUBlockSize(CRect& rect) {
+	int nBlockWidth = tjMCUWidth[m_eJPEGChromoSampling];
+	rect.left = rect.left & ~(nBlockWidth - 1);
+	rect.right = (rect.right + (nBlockWidth - 1)) & ~(nBlockWidth - 1);
+	if (rect.right > m_nOrigWidth) {
+		rect.right -= nBlockWidth; 
+	}
+
+	int nBlockHeight = tjMCUHeight[m_eJPEGChromoSampling];
+	rect.top = rect.top & ~(nBlockHeight - 1);
+	rect.bottom = (rect.bottom + (nBlockHeight - 1)) & ~(nBlockHeight - 1);
+	if (rect.bottom > m_nOrigHeight) {
+		rect.bottom -= nBlockHeight; 
+	}
+}
+
+void* CJPEGImage::GetThumbnailDIB(CSize size, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags) {
+	return GetThumbnailDIB(size, size, CPoint(0, 0), imageProcParams, eProcFlags);
+}
+
+void* CJPEGImage::GetThumbnailDIB(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags) {
+	assert(!m_bIsThumbnailImage);
+	if (m_pThumbnail == NULL) {
+		m_pThumbnail = CreateThumbnailImage();
+	}
+	return m_pThumbnail->GetDIB(fullTargetSize, clippingSize, targetOffset, imageProcParams, eProcFlags);
+}
+
+void* CJPEGImage::GetThumbnailDIBRotated(CSize size, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, double dRotation) {
+	assert(!m_bIsThumbnailImage);
+	if (m_pThumbnail == NULL) {
+		m_pThumbnail = CreateThumbnailImage();
+	}
+	return m_pThumbnail->GetDIBRotated(size, size, CPoint(0, 0), imageProcParams, eProcFlags, dRotation, false);
+}
+
+void* CJPEGImage::GetThumbnailDIBTrapezoid(CSize size, const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, const CTrapezoid& trapezoid) {
+	assert(!m_bIsThumbnailImage);
+	if (m_pThumbnail == NULL) {
+		m_pThumbnail = CreateThumbnailImage();
+	}
+	return m_pThumbnail->GetDIBTrapezoid(size, size, CPoint(0, 0), imageProcParams, eProcFlags, &trapezoid, false);
+}
+
+void* CJPEGImage::GetDIBUnsharpMasked(CSize clippingSize, CPoint targetOffset,
+									  const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags, 
+									  const CUnsharpMaskParams & unsharpMaskParams) {
+	assert(!m_bIsThumbnailImage);
+	bool bUseUnsharpMask = unsharpMaskParams.Amount > 0 && unsharpMaskParams.Radius > 0;
+	bool bParametersChanged;
+	return GetDIBInternal(CSize(m_nOrigWidth, m_nOrigHeight), clippingSize, targetOffset, imageProcParams, 
+		eProcFlags, bUseUnsharpMask ? &unsharpMaskParams : NULL, NULL, 0.0, false, bParametersChanged);
+}
+
+const CHistogram* CJPEGImage::GetOriginalHistogram() {
+	assert(!m_bIsThumbnailImage);
+	if (m_pLDC == NULL) {
+		m_pLDC = new CLocalDensityCorr(*this, true);
+	}
+	return m_pLDC->GetHistogram();
+}
+
+const CHistogram* CJPEGImage::GetProcessedHistogram() {
+	assert(!m_bIsThumbnailImage);
+	if (m_pHistogramThumbnail == NULL) {
+		m_pHistogramThumbnail = CreateThumbnailImage();
+	}
+	return (m_imageProcParams.Contrast == -1) ? NULL : 
+		m_pHistogramThumbnail->GetHistogramOfProcessedDIB(
+		CImageProcessingParams(m_imageProcParams.Contrast, m_imageProcParams.Gamma, m_imageProcParams.Saturation,
+		0.0, m_imageProcParams.ColorCorrectionFactor, m_imageProcParams.ContrastCorrectionFactor, 
+		m_imageProcParams.LightenShadows, m_imageProcParams.DarkenHighlights, m_imageProcParams.LightenShadowSteepness, 
+		m_imageProcParams.CyanRed, m_imageProcParams.MagentaGreen, m_imageProcParams.YellowBlue), 
+		SetProcessingFlag(m_eProcFlags, PFLAG_HighQualityResampling, false));
+}
+
+const CHistogram* CJPEGImage::GetHistogramOfProcessedDIB(const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags) {
+	assert(m_bIsThumbnailImage);
+	CSize origSize(m_nOrigWidth, m_nOrigHeight);
+	bool bParametersChanged;
+	void* pDIBPixels = GetDIBInternal(origSize, origSize, CPoint(0, 0), imageProcParams, eProcFlags, NULL, NULL, 0.0, false, bParametersChanged);
+	if (bParametersChanged || m_pCachedProcessedHistogram == NULL) {
+		delete m_pCachedProcessedHistogram;
+		m_pCachedProcessedHistogram = NULL;
+		if (pDIBPixels == NULL) {
+			return NULL;
+		}
+		m_pCachedProcessedHistogram = new CHistogram(pDIBPixels, origSize);
+	}
+	return m_pCachedProcessedHistogram;
+}
+
+void CJPEGImage::FreeUnsharpMaskResources() {
+	delete[] m_pGrayImage;
+	m_pGrayImage = NULL;
+	delete[] m_pSmoothGrayImage;
+	m_pSmoothGrayImage = NULL;
+}
+
+bool CJPEGImage::ApplyUnsharpMaskToOriginalPixels(const CUnsharpMaskParams & unsharpMaskParams) {
+	InvalidateAllCachedPixelData();
+
+	double dStartTime = Helpers::GetExactTickCount();
+
+	bool bSuccess = false;
+	int16* pGray = CBasicProcessing::Create1Channel16bppGrayscaleImage(m_nOrigWidth, m_nOrigHeight, m_pOrigPixels, m_nOriginalChannels);
+	if (pGray != NULL) {
+		int16* pSmoothed = CBasicProcessing::GaussFilter16bpp1Channel(CSize(m_nOrigWidth, m_nOrigHeight), CPoint(0, 0), 
+			CSize(m_nOrigWidth, m_nOrigHeight), unsharpMaskParams.Radius, pGray);
+		if (pSmoothed != NULL) {
+			bSuccess = NULL != CBasicProcessing::UnsharpMask(CSize(m_nOrigWidth, m_nOrigHeight), CPoint(0,0), CSize(m_nOrigWidth, m_nOrigHeight), 
+				unsharpMaskParams.Amount, unsharpMaskParams.Threshold, pGray, pSmoothed, m_pOrigPixels, m_pOrigPixels, m_nOriginalChannels);
+		}
+		delete[] pSmoothed;
+	}
+	delete[] pGray;
+
+	m_dUnsharpMaskTickCount = Helpers::GetExactTickCount() - dStartTime;
+
+	MarkAsDestructivelyProcessed();
+	m_bIsProcessedNoParamDB = true;
+
+	return bSuccess;
+}
+*/
 bool CJPEGImage::RotateOriginalPixels(double dRotation, bool bAutoCrop, bool bKeepAspectRatio) {
 /*
 	InvalidateAllCachedPixelData();
@@ -216,7 +342,102 @@ bool CJPEGImage::RotateOriginalPixels(double dRotation, bool bAutoCrop, bool bKe
 */
 	return true;
 }
+/*
+bool CJPEGImage::TrapezoidOriginalPixels(const CTrapezoid& trapezoid, bool bAutoCrop, bool bKeepAspectRatio) {
+	InvalidateAllCachedPixelData();
 
+	int nXStart, nXEnd;
+	int nYStart = trapezoid.y1, nYEnd = trapezoid.y2;
+
+	if (bAutoCrop) {
+		if (bKeepAspectRatio) {
+			CRect rect = Helpers::CalculateMaxIncludedRectKeepAR(trapezoid, (double)m_nOrigWidth / m_nOrigHeight);
+			nXStart = rect.left; nXEnd = rect.right;
+			nYStart = rect.top; nYEnd = rect.bottom;
+		} else {
+			// Calculate the maximum included rectangle
+			nXStart = max(trapezoid.x1s, trapezoid.x2s);
+			nXEnd = min(trapezoid.x1e, trapezoid.x2e);
+		}
+	} else {
+		nXStart = min(trapezoid.x1s, trapezoid.x2s);
+		nXEnd = max(trapezoid.x1e, trapezoid.x2e);
+	}
+
+	if (nXStart >= nXEnd) {
+		return false;
+	}
+
+	CSize newSize(nXEnd - nXStart + 1, nYEnd - nYStart + 1);
+	void* pTransformedPixels = CBasicProcessing::TrapezoidHQ(CPoint(nXStart, nYStart), newSize, trapezoid, 
+		CSize(m_nOrigWidth, m_nOrigHeight), m_pOrigPixels, m_nOriginalChannels, CSettingsProvider::This().ColorBackground());
+	if (pTransformedPixels == NULL) return false;
+	delete[] m_pOrigPixels;
+
+	m_nOrigWidth = newSize.cx;
+	m_nOrigHeight = newSize.cy;
+	m_nOriginalChannels = 4;
+	m_pOrigPixels = pTransformedPixels;
+	MarkAsDestructivelyProcessed();
+	m_bIsProcessedNoParamDB = true;
+
+	return true;
+}
+
+bool CJPEGImage::ResizeOriginalPixels(EResizeFilter filter, CSize newSize) {
+	int newWidth = newSize.cx, newHeight = newSize.cy;
+	if (newWidth <= 0 || newHeight <= 0) {
+		return false;
+	}
+	if (((long long)newWidth) * newHeight > MAX_IMAGE_PIXELS) {
+		return false;
+	}
+	if (newWidth > MAX_IMAGE_DIMENSION || newHeight > MAX_IMAGE_DIMENSION) {
+		return false;
+	}
+	if (newWidth == m_nOrigWidth && newHeight == m_nOrigHeight) {
+		return true;
+	}
+
+	InvalidateAllCachedPixelData();
+
+	void* pResizedPixels = m_pOrigPixels;
+	int currentWidth = m_nOrigWidth;
+	int currentHeight = m_nOrigHeight;
+	int channels = m_nOriginalChannels;
+	double totalFactor = (double)currentWidth / newWidth;
+	int steps = (totalFactor > 5) ? (int)ceil(log(totalFactor) / log(5.0)) : 1;
+	double factor = (steps > 1) ? pow(totalFactor, 1.0 / steps) : 1.0;
+	for (int i = 0; i < steps; i++) {
+		EResizeFilter usedFilter;
+		int oldWidth = currentWidth, oldHeight = currentHeight;
+		if (i != steps - 1 && filter != Resize_PointFilter) {
+			currentWidth = (int)(currentWidth / factor);
+			currentHeight = (int)(currentHeight / factor);
+			usedFilter = (filter == Resize_SharpenMedium) ? Resize_SharpenLow : Resize_NoAliasing;
+		} else {
+			currentWidth = newWidth;
+			currentHeight = newHeight;
+			usedFilter = filter;
+		}
+		void* pOldPixels = pResizedPixels;
+		pResizedPixels = InternalResize(pResizedPixels, channels, usedFilter, CSize(currentWidth, currentHeight), CSize(oldWidth, oldHeight));
+		if (pResizedPixels == NULL)
+			return false;
+		delete[] pOldPixels;
+		channels = 4;
+	}
+
+	m_nOrigWidth = newWidth;
+	m_nOrigHeight = newHeight;
+	m_nOriginalChannels = 4;
+	m_pOrigPixels = pResizedPixels;
+	MarkAsDestructivelyProcessed();
+	m_bIsProcessedNoParamDB = true;
+
+	return true;
+}
+*/
 void CJPEGImage::ResampleWithPan(void* & pDIBPixels, void* & pDIBPixelsLUTProcessed, CSize fullTargetSize, 
 								 CSize clippingSize, CPoint targetOffset, CRect oldClippingRect,
 								 EProcessingFlags eProcFlags, EResizeType eResizeType) {
@@ -344,8 +565,8 @@ void CJPEGImage::ResampleWithPan(void* & pDIBPixels, void* & pDIBPixelsLUTProces
 	delete[] pDIBPixelsLUTProcessed; pDIBPixelsLUTProcessed = NULL;
 }
 
-void* CJPEGImage::Resample(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, EProcessingFlags eProcFlags, EResizeType eResizeType)
-	{
+void* CJPEGImage::Resample(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, 
+						EProcessingFlags eProcFlags, EResizeType eResizeType) {
 	Helpers::CPUType cpu = CSettingsProvider::This().AlgorithmImplementation();
 	EFilterType filter = CSettingsProvider::This().DownsamplingFilter();
 
@@ -439,7 +660,7 @@ bool CJPEGImage::VerifyRotation(const CRotationParams& rotationParams) {
 }
 */
 bool CJPEGImage::Rotate(int nRotation) {
-//*GF*/	double dStartTickCount = Helpers::GetExactTickCount();
+	double dStartTickCount = Helpers::GetExactTickCount();
 
 	// Rotation can only be done in 32 bpp
 	if (!ConvertSrcTo4Channels()) {
@@ -459,12 +680,12 @@ bool CJPEGImage::Rotate(int nRotation) {
 	}
 	m_nRotation = (m_nRotation + nRotation) % 360;
 
-//*GF*/	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
+	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
 	return true;
 }
 
 bool CJPEGImage::Mirror(bool bHorizontally) {
-//*GF*/	double dStartTickCount = Helpers::GetExactTickCount();
+	double dStartTickCount = Helpers::GetExactTickCount();
 
 	// Rotation can only be done in 32 bpp
 	if (!ConvertSrcTo4Channels()) {
@@ -477,13 +698,73 @@ bool CJPEGImage::Mirror(bool bHorizontally) {
 	if (pNewOriginalPixels == NULL) return false;
 	delete[] m_pOrigPixels;
 	m_pOrigPixels = pNewOriginalPixels;
-//	MarkAsDestructivelyProcessed();
-//	m_bIsProcessedNoParamDB = true;
+	MarkAsDestructivelyProcessed();
+	m_bIsProcessedNoParamDB = true;
 
-//*GF*/	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
+	m_dLastOpTickCount = Helpers::GetExactTickCount() - dStartTickCount;
 	return true;
+}
+/*
+bool CJPEGImage::Crop(CRect cropRect) {
+	// Cropping can only be done in 32 bpp
+	if (!ConvertSrcTo4Channels()) {
+		return false;
 	}
 
+	InvalidateAllCachedPixelData();
+	void* pNewOriginalPixels = CBasicProcessing::Crop32bpp(m_nOrigWidth, m_nOrigHeight, m_pOrigPixels, cropRect);
+	if (pNewOriginalPixels == NULL) {
+		return false;
+	}
+	delete[] m_pOrigPixels;
+	m_pOrigPixels = pNewOriginalPixels;
+	m_nOrigWidth = cropRect.Width();
+	m_nOrigHeight = cropRect.Height();
+	m_bCropped = true;
+	MarkAsDestructivelyProcessed();
+	m_bIsProcessedNoParamDB = true;
+
+	return true;
+}
+
+void CJPEGImage::SetDimRects(const CDimRect* dimRects, int numberOfRects) {
+	bool bIdentical = false;
+	if (m_pDIBPixelsLUTProcessed) {
+		bool bCanReuseDIB = false;
+		if (numberOfRects >= m_nNumDimRects) {
+			bCanReuseDIB = true;
+			for (int i = 0; i < m_nNumDimRects; i++) {
+				if (dimRects[i].Rect != m_pDimRects[i].Rect || dimRects[i].Factor != m_pDimRects[i].Factor) {
+					bCanReuseDIB = false;
+					break;
+				}
+			}
+		}
+		if (bCanReuseDIB) {
+			bIdentical = numberOfRects == m_nNumDimRects;
+			// only dim the new rectangles
+			for (int i = m_nNumDimRects; i < numberOfRects; i++) {
+				CBasicProcessing::DimRectangle32bpp(DIBWidth(), DIBHeight(), m_pDIBPixelsLUTProcessed,
+					dimRects[i].Rect, dimRects[i].Factor);
+			}
+		} else {
+			// force to recreate processed DIB on next access
+			delete[] m_pDIBPixelsLUTProcessed;
+			m_pDIBPixelsLUTProcessed = NULL;
+			m_pLastDIB = NULL;
+		}
+	}
+	if (!bIdentical) {
+		delete[] m_pDimRects;
+		m_pDimRects = NULL;
+		m_nNumDimRects = numberOfRects;
+		if (numberOfRects > 0) {
+			m_pDimRects = new CDimRect[numberOfRects];
+			memcpy(m_pDimRects, dimRects, numberOfRects*sizeof(CDimRect));
+		}
+	}
+}
+*/
 void CJPEGImage::EnableDimming(bool bEnable) {
 	if (bEnable != m_bEnableDimming && m_pDimRects != NULL) {
 		m_bEnableDimming = bEnable;
@@ -500,6 +781,84 @@ void* CJPEGImage::DIBPixelsLastProcessed(bool bGenerateDIBIfNeeded) {
 	return m_pLastDIB;
 }
 
+/*
+void CJPEGImage::VerifyDIBPixelsCreated() {
+	if (m_pDIBPixels == NULL) {
+		EResizeType eResizeType = GetResizeType(m_FullTargetSize, CSize(m_nOrigWidth, m_nOrigHeight));
+		m_pDIBPixels = Resample(m_FullTargetSize, m_ClippingSize, m_TargetOffset, m_eProcFlags, m_imageProcParams.Sharpen, m_dRotationLQ, eResizeType);
+	}
+}
+
+float CJPEGImage::IsNightShot() const {
+	if (m_pLDC != NULL) {
+		return m_pLDC->GetHistogram()->IsNightShot();
+	} else {
+		return -1;
+	}
+}
+
+float CJPEGImage::IsSunset() const {
+	if (m_pLDC != NULL) {
+		return m_pLDC->IsSunset();
+	} else {
+		return -1;
+	}
+}
+
+void CJPEGImage::SetInitialParameters(const CImageProcessingParams& imageProcParams, 
+									  EProcessingFlags procFlags, int nRotation, double dZoom, CPoint offsets) {
+	m_nInitialRotation = nRotation;
+	m_eProcFlagsInitial = procFlags;
+	m_imageProcParamsInitial = imageProcParams;
+	m_dInitialZoom = dZoom;
+	m_initialOffsets = offsets;
+}
+
+void CJPEGImage::RestoreInitialParameters(LPCTSTR sFileName, const CImageProcessingParams& imageProcParams, 
+										  EProcessingFlags & procFlags, int nRotation, double dZoom, 
+										  CPoint offsets, CSize targetSize, CSize monitorSize) {
+	// zoom and offsets must be initialized in all cases as they may be not in param DB even when
+	// other parameters are
+	m_dInitialZoom = dZoom;
+	m_initialOffsets = offsets;
+
+	CParameterDBEntry* dbEntry = CParameterDB::This().FindEntry(GetPixelHash());
+	m_bInParamDB = dbEntry != NULL;
+	m_bHasZoomStoredInParamDB = m_bInParamDB && dbEntry->HasZoomOffsetStored();
+	bool bKeepParams = ::GetProcessingFlag(procFlags, PFLAG_KeepParams);
+	if (m_bInParamDB && !bKeepParams) {
+		dbEntry->WriteToProcessParams(m_imageProcParamsInitial, m_eProcFlagsInitial, CRotationParams(m_nInitialRotation));
+		dbEntry->GetColorCorrectionAmounts(m_fColorCorrectionFactors);
+
+		dbEntry->WriteToGeometricParams(m_dInitialZoom, m_initialOffsets, SizeAfterRotation(CRotationParams(m_rotationParams, m_nInitialRotation)),
+			dbEntry->IsStoredRelativeToScreenSize() ? monitorSize : targetSize);
+	} else {
+		m_nInitialRotation = GetRotationFromEXIF(nRotation);
+		m_eProcFlagsInitial = bKeepParams ? procFlags : GetProcFlagsIncludeExcludeFolders(sFileName, procFlags);
+		procFlags = m_eProcFlagsInitial;
+		m_imageProcParamsInitial = imageProcParams;
+		m_imageProcParamsInitial.LightenShadows *= m_fLightenShadowFactor;
+	}
+}
+
+void CJPEGImage::GetFileParams(LPCTSTR sFileName, EProcessingFlags& eFlags, CImageProcessingParams& params) const {
+	if (IsClipboardImage()) {
+		return;
+	}
+	CParameterDBEntry* dbEntry = CParameterDB::This().FindEntry(GetPixelHash());
+	if (m_bInParamDB) {
+		CRotationParams notUsed(0);
+		if (!::GetProcessingFlag(eFlags, PFLAG_KeepParams)) {
+			dbEntry->WriteToProcessParams(params, eFlags, notUsed);
+		}
+	} else {
+		params.LightenShadows *= m_fLightenShadowFactor;
+		if (!::GetProcessingFlag(eFlags, PFLAG_KeepParams)) {
+			eFlags = GetProcFlagsIncludeExcludeFolders(sFileName, eFlags);
+		}
+	}
+}
+*/
 void CJPEGImage::SetFileDependentProcessParams(LPCTSTR sFileName, CProcessParams* pParams) {
 	pParams->Rotation = GetRotationFromEXIF(pParams->Rotation);
 	m_nInitialRotation = pParams->Rotation;
@@ -604,19 +963,20 @@ void* CJPEGImage::GetDIBInternal(CSize fullTargetSize, CSize clippingSize, CPoin
 void* CJPEGImage::ApplyCorrectionLUTandLDC(EProcessingFlags eProcFlags,
 										   void * & pCachedTargetDIB, CSize fullTargetSize, CPoint targetOffset, 
 										   void * pSourceDIB, CSize dibSize,
-										   bool bGeometryChanged, bool bOnlyCheck, bool bCanTakeOwnershipOfSourceDIB, bool &bParametersChanged)
-	{
+										   bool bGeometryChanged, bool bOnlyCheck, bool bCanTakeOwnershipOfSourceDIB, bool &bParametersChanged) {
 	bParametersChanged = false;
 
 	if (pCachedTargetDIB != NULL)
 		return pCachedTargetDIB;
 
 	// If it shall only be checked if this method would be able to reuse the existing pCachedTargetDIB, return
-	if (bOnlyCheck)
+	if (bOnlyCheck) {
 		return NULL;
+	}
 
-	if (pSourceDIB == NULL)
+	if (pSourceDIB == NULL) {
 		return NULL;
+	}
 
 	delete[] pCachedTargetDIB;
 	pCachedTargetDIB = NULL;
@@ -640,10 +1000,45 @@ bool CJPEGImage::ConvertSrcTo4Channels() {
 	return true;
 }
 
-EProcessingFlags CJPEGImage::GetProcFlagsIncludeExcludeFolders(LPCTSTR sFileName, EProcessingFlags procFlags) const
-	{
-	return procFlags;
+EProcessingFlags CJPEGImage::GetProcFlagsIncludeExcludeFolders(LPCTSTR sFileName, EProcessingFlags procFlags) const {
+	EProcessingFlags eFlags = procFlags;
+/*
+	CSettingsProvider& sp = CSettingsProvider::This();
+	LPCTSTR sPatternInclude;
+	LPCTSTR sPatternExclude;
+
+	bool bIncludeACCMatch = Helpers::PatternMatch(sPatternInclude, sFileName, sp.ACCInclude());
+	bool bExcludeACCMatch = Helpers::PatternMatch(sPatternExclude, sFileName, sp.ACCExclude());
+	if (bIncludeACCMatch && bExcludeACCMatch) {
+		// Take more specific pattern if both match
+		int nSpec = Helpers::FindMoreSpecificPattern(sPatternInclude, sPatternExclude);
+		if (nSpec == -1) {
+			bIncludeACCMatch = false; // Exclude is more specific
+		} else {
+			bExcludeACCMatch = false; // Include is more specific (or no difference)
+		}
 	}
+	if (bIncludeACCMatch || bExcludeACCMatch) {
+		eFlags = SetProcessingFlag(eFlags, PFLAG_AutoContrast, bIncludeACCMatch);
+	}
+
+	bool bIncludeLDCMatch = Helpers::PatternMatch(sPatternInclude, sFileName, sp.LDCInclude());
+	bool bExcludeLDCMatch = Helpers::PatternMatch(sPatternExclude, sFileName, sp.LDCExclude());
+	if (bIncludeLDCMatch && bExcludeLDCMatch) {
+		// Take more specific pattern if both match
+		int nSpec = Helpers::FindMoreSpecificPattern(sPatternInclude, sPatternExclude);
+		if (nSpec == -1) {
+			bIncludeLDCMatch = false; // Exclude is more specific
+		} else {
+			bExcludeLDCMatch = false; // Include is more specific (or no difference)
+		}
+	}
+	if (bIncludeLDCMatch || bExcludeLDCMatch) {
+		eFlags = SetProcessingFlag(eFlags, PFLAG_LDC, bIncludeLDCMatch);
+	}
+*/
+	return eFlags;
+}
 
 CSize CJPEGImage::SizeAfterRotation(int nRotation) {
 	int nDiff = ((nRotation - m_nRotation) + 360) % 360;
@@ -653,7 +1048,6 @@ CSize CJPEGImage::SizeAfterRotation(int nRotation) {
 		return CSize(m_nOrigWidth, m_nOrigHeight);
 	}
 }
-
 /*
 CSize CJPEGImage::SizeAfterRotation(const CRotationParams& rotationParams) {
 	int nDiff = ((rotationParams.Rotation - m_rotationParams.Rotation) + 360) % 360;

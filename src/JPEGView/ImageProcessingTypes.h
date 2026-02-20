@@ -23,6 +23,13 @@ enum EFilterType {
 	Filter_Upsampling_Bicubic
 };
 
+enum EResizeFilter {
+	Resize_PointFilter,  // Point sampling
+	Resize_NoAliasing,   // Lanczos filter
+	Resize_SharpenLow,   // 3 tap downsampling filter with some sharpening
+	Resize_SharpenMedium // 3 tap downsampling filter with medium sharpening
+};
+
 // Image formats (can be other than JPEG...)
 enum EImageFormat {
 	IF_JPEG,
@@ -40,7 +47,7 @@ enum EImageFormat {
     IF_WIC,
 	IF_CLIPBOARD,
 	IF_CameraRAW,
-    IF_JPEG_Embedded, // JPEG embedded in another file, e.g. camera raw
+	IF_JPEG_Embedded, // JPEG embedded in another file, e.g. camera raw
 	IF_TGA,
 	IF_Unknown
 };

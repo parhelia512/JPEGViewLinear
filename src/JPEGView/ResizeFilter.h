@@ -5,14 +5,14 @@
 
 enum FilterSIMDType {
 	FilterSIMDType_None, // filter is not for SIMD processing
-	FilterSIMDType_SSE, // filter is for SSE 128 bit SIMD
+	FilterSIMDType_SSE, // filter is for SSE (and MMX) 128 bit SIMD
 	FilterSIMDType_AVX // filter is for AVX 256 bit SIMD
 };
 
 struct FilterKernel {
 	int16 Kernel[MAX_FILTER_LEN]; // elements are fixed point numbers, typically with 2.14 format
 	int FilterLen; // actual filter length
-	int FilterOffset; // the offset is stored as a number >= 0 and must be subracted! from the calculated position to get the start position for applying the filter
+	int FilterOffset; // the offset is stored as a number >= 0 and must be subtracted! from the calculated position to get the start position for applying the filter
 };
 
 // Indexed block of filter kernels, assigning a filter kernel to indices [1..t], allowing sharing the same
@@ -53,7 +53,7 @@ struct AVXFilterKernel {
 	int FilterLen;
 	int FilterOffset;
 	int pad[6]; // padd to 32 bytes before kernel starts
-	AVXKernelElement Kernel[1]; // this is a placehoder for a kernel of FilterLen elements
+	AVXKernelElement Kernel[1]; // this is a placeholder for a kernel of FilterLen elements
 };
 
 struct AVXFilterKernelBlock {

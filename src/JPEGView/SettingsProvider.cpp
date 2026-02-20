@@ -7,9 +7,9 @@
 
 static const TCHAR* DEFAULT_INI_FILE_NAME = _T("JPEGView.ini");
 static const TCHAR* SECTION_NAME = _T("JPEGView");
-/*
+
 static float COLOR_CORR_DEFAULT_FACTORS[6] = {0.2f, 0.1f, 0.3f, 0.3f, 0.3f, 0.15f};
-*/
+
 CSettingsProvider* CSettingsProvider::sm_instance;
 
 static CString ParseCommandLineForIniName(LPCTSTR sCommandLine) {
@@ -32,11 +32,11 @@ CSettingsProvider& CSettingsProvider::This() {
 	}
 	return *sm_instance;
 }
-/*
+
 float* CSettingsProvider::ColorCorrectionAmounts() { 
 	return (m_fColorCorrections[0] < 0) ? COLOR_CORR_DEFAULT_FACTORS : m_fColorCorrections;
 }
-*/
+
 CSettingsProvider::CSettingsProvider(void) {
 	// parse command line to find the process startup path
 	LPTSTR pCmdLine = ::GetCommandLine();
@@ -97,7 +97,6 @@ CSettingsProvider::CSettingsProvider(void) {
 		Helpers::SetJPEGViewAppDataPath(m_sEXEPath);
 	}
 
-/*
 	// Get "My documents" path
 	CString sMyDocumentsFolder;
 	LPTSTR lpFolderBuffer = sMyDocumentsFolder.GetBuffer(MAX_PATH);
@@ -109,12 +108,12 @@ CSettingsProvider::CSettingsProvider(void) {
 	LPTSTR lpPicturesBuffer = sMyPicturesFolder.GetBuffer(MAX_PATH);
 	::SHGetFolderPath(NULL, CSIDL_MYPICTURES, NULL, SHGFP_TYPE_CURRENT, lpPicturesBuffer);
 	sMyPicturesFolder.ReleaseBuffer();
-*/
+
 	// Read settings that can be written with SaveSettings()
 	ReadWriteableINISettings();
+
 	m_bAutoFullScreen = GetString(_T("ShowFullScreen"), _T("")).CompareNoCase(_T("auto")) == 0;
 	m_bShowFullScreen = m_bAutoFullScreen ? true : GetBool(_T("ShowFullScreen"), true);
-/*
 	m_bShowEXIFDateInTitle = GetBool(_T("ShowEXIFDateInTitle"), true);
 	m_bShowFullPathInTitle = GetBool(_T("ShowFilePathInTitle"), false);
 	m_bShowHistogram = GetBool(_T("ShowHistogram"), false);
@@ -123,11 +122,13 @@ CSettingsProvider::CSettingsProvider(void) {
 	m_bShowZoomNavigator = GetBool(_T("ShowZoomNavigator"), true);
 	m_fBlendFactorNavPanel = (float)GetDouble(_T("BlendFactorNavPanel"), 0.5, 0.0, 1.0);
 	m_fScaleFactorNavPanel = (float)GetDouble(_T("ScaleFactorNavPanel"), 1.0, 0.8, 2.5);
-*/
 
-	CString sCPU = GetString(_T("CPUType"), _T(""));
+	CString sCPU = GetString(_T("CPUType"), _T("AutoDetect"));
 	if (sCPU.CompareNoCase(_T("Generic")) == 0) {
 		m_eCPUAlgorithm = Helpers::CPU_Generic;
+	}
+	else if (sCPU.CompareNoCase(_T("MMX")) == 0) {
+		m_eCPUAlgorithm = Helpers::CPU_MMX;
 	}
 	else if (sCPU.CompareNoCase(_T("SSE")) == 0) {
 		m_eCPUAlgorithm = Helpers::CPU_SSE;
@@ -135,22 +136,16 @@ CSettingsProvider::CSettingsProvider(void) {
 	else if (sCPU.CompareNoCase(_T("AVX2")) == 0) {
 		m_eCPUAlgorithm = Helpers::CPU_AVX2;
 	}
-	else if (sCPU.CompareNoCase(_T("AutoDetect")) == 0) {
+	else {
 		m_eCPUAlgorithm = Helpers::ProbeCPU();
 	}
-	else {
-		m_eCPUAlgorithm = Helpers::CPU_SSE;		// Default to SSE2 with empty/invalid value
-	}
-/*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("m_eCPUAlgorithm: %d (0=unknown, 1=generic, 2=mmx, 3=sse, 4=avx2)"), m_eCPUAlgorithm);
-/*GF*/	::OutputDebugStringW(debugtext);
-
-
 	m_nNumCores = GetInt(_T("CPUCoresUsed"), 0, 0, 128);
 	if (m_nNumCores == 0) {
+/*
+		m_nNumCores = Helpers::NumCoresPerPhysicalProc();
+		if (m_nNumCores > 4) m_nNumCores = 4;
+*/
 		m_nNumCores = Helpers::NumConcurrentThreads();
-/*GF*/	swprintf(debugtext,255,TEXT("m_nNumCores: %d (number of concurrent threads supported by the CPU)"), m_nNumCores);
-/*GF*/	::OutputDebugStringW(debugtext);
 	}
 
 
@@ -173,9 +168,7 @@ CSettingsProvider::CSettingsProvider(void) {
 	else {
 		m_eDownsamplingFilter = Filter_Downsampling_Catrom;
 	}
-/*GF*/	swprintf(debugtext,255,TEXT("m_eDownsamplingFilter: %d (0=none, 1=hermite, 2=mitchell, 3=catrom, 4=lanczos2)"), m_eDownsamplingFilter);
-/*GF*/	::OutputDebugStringW(debugtext);
-/*
+
 	m_bNavigateMouseWheel = GetBool(_T("NavigateWithMouseWheel"), false);
 	m_dMouseWheelZoomSpeed = GetDouble(_T("MouseWheelZoomSpeed"), 1.0, 0.1, 10);
 
@@ -190,25 +183,19 @@ CSettingsProvider::CSettingsProvider(void) {
 		m_eDeleteConfirmation = Helpers::DC_Always;
 	}
 
-*/
 	m_nMaxSlideShowFileListSize = GetInt(_T("MaxSlideShowFileListSizeKB"), 200, 100, 10000);
 	m_nSlideShowEffectTimeMs = GetInt(_T("SlideShowEffectTime"), 200, 100, 5000);
 	m_bForceGDIPlus = GetBool(_T("ForceGDIPlus"), false);
-/*
 	m_bSingleInstance = GetBool(_T("SingleInstance"), false);
 	m_bSingleFullScreenInstance = GetBool(_T("SingleFullScreenInstance"), true);
 	m_nJPEGSaveQuality = GetInt(_T("JPEGSaveQuality"), 85, 0, 100);
 	m_nWEBPSaveQuality = GetInt(_T("WEBPSaveQuality"), 85, 0, 100);
 	m_sDefaultSaveFormat = GetString(_T("DefaultSaveFormat"), _T("jpg"));
-*/
 	m_sFilesProcessedByWIC = GetString(_T("FilesProcessedByWIC"), _T("*.wdp;*.mdp;*.hdp"));
 	m_sFileEndingsRAW = GetString(_T("FileEndingsRAW"), _T("*.pef;*.dng;*.crw;*.nef;*.cr2;*.mrw;*.rw2;*.orf;*.x3f;*.arw;*.kdc;*.nrw;*.dcr;*.sr2;*.raf"));
-/*
 	m_nDisplayFullSizeRAW = GetInt(_T("DisplayFullSizeRAW"), 0, 0, 3);
 	m_bCreateParamDBEntryOnSave = GetBool(_T("CreateParamDBEntryOnSave"), true);
-*/
 	m_bWrapAroundFolder = GetBool(_T("WrapAroundFolder"), true);
-/*
 	m_bFlashWindowAlert = GetBool(_T("FlashWindowAlert"), true);
 	m_bBeepSoundAlert = GetBool(_T("BeepSoundAlert"), false);  // don't make it default on... too much sound feedback is pretty annoying
 	m_bWindowBorderlessOnStartup = GetBool(_T("WindowBorderlessOnStartup"), false);
@@ -218,17 +205,14 @@ CSettingsProvider::CSettingsProvider(void) {
 	m_bCropWithoutPromptLosslessJPEG = GetBool(_T("CropWithoutPromptLosslessJPEG"), false);
 	m_bAllowFileDeletion = GetBool(_T("AllowFileDeletion"), true);
 	m_bExchangeXButtons = GetBool(_T("ExchangeXButtons"), true);
-*/
 	m_bAutoRotateEXIF = GetBool(_T("AutoRotateEXIF"), true);
 	m_bUseEmbeddedColorProfiles = GetBool(_T("UseEmbeddedColorProfiles"), false);
 	m_nDisplayMonitor = GetInt(_T("DisplayMonitor"), -1, -1, 16);
-/*
 	m_dAutoContrastAmount = GetDouble(_T("AutoContrastCorrectionAmount"), 0.5, 0.0, 1.0);
 	m_dAutoBrightnessAmount = GetDouble(_T("AutoBrightnessCorrectionAmount"), 0.2, 0.0, 1.0);
 	m_sLandscapeModeParams = GetString(_T("LandscapeModeParams"), _T("-1 -1 -1 -1 0.5 1.0 0.75 0.4 -1 -1 -1"));
 	m_bLandscapeMode = GetBool(_T("LandscapeMode"), false);
 	m_sCopyRenamePattern = GetString(_T("CopyRenamePattern"), _T(""));
-*/
 	m_defaultWindowRect = GetRect(_T("DefaultWindowRect"), CRect(0, 0, 0, 0));
 	m_stickyWindowRect = GetRect(_T("StickyWindowRect"), CRect(0, 0, 0, 0));
 	m_bDefaultMaximized = false;
@@ -247,22 +231,34 @@ CSettingsProvider::CSettingsProvider(void) {
 			m_bStickyWindowSize = true;
 			m_bExplicitWindowRect = !m_stickyWindowRect.IsRectEmpty();
 		}
+		else {
+			RECT workAreaRect;
+			INT iBorderPosR = 0;
+			
+			HDC hdc = ::GetDC(NULL);
+			int ScreenDPI = GetDeviceCaps(hdc, LOGPIXELSX);
+			::ReleaseDC(NULL, hdc);
+
+			::SystemParametersInfo(SPI_GETWORKAREA, 0, &workAreaRect, 0);
+
+			iBorderPosR = (int(floor(((workAreaRect.right - floor(((256.0*(workAreaRect.right-workAreaRect.left))/1920) + 0.5))/32.0)+0.5))) * 32;
+
+			// left, top, right, bottom
+			m_defaultWindowRect = CRect((workAreaRect.right-iBorderPosR),workAreaRect.top,iBorderPosR,workAreaRect.bottom);
+		}
 	}
 	else {
 		m_bExplicitWindowRect = true;
 	}
-	//m_colorBackground = GetColor(_T("BackgroundColor"), 0);
-	m_colorBackground = GetColor(_T("BackgroundColor"), RGB(0, 0, 0));
-/*
+
+	m_colorBackground = GetColor(_T("BackgroundColor"), 0);
 	m_colorGUI = GetColor(_T("GUIColor"), RGB(243, 242, 231));
 	m_colorHighlight = GetColor(_T("HighlightColor"), RGB(255, 205, 0));
 	m_colorSelected = GetColor(_T("SelectionColor"), RGB(255, 205, 0));
 	m_colorSlider = GetColor(_T("SliderColor"), RGB(255, 0, 80));
 	m_colorFileName = GetColor(_T("FileNameColor"), m_colorGUI);
-*/
-	//m_colorTransparency = GetColor(_T("TransparencyColor"), m_colorBackground);
-	m_colorTransparency = GetColor(_T("TransparencyColor"), RGB(255, 0, 255));
-/*
+	m_colorTransparency = GetColor(_T("TransparencyColor"), m_colorBackground);
+
 	m_defaultGUIFont = GetString(_T("DefaultGUIFont"), _T("Default"));
 	m_fileNameFont = GetString(_T("FileNameFont"), _T("Default"));
 
@@ -283,9 +279,7 @@ CSettingsProvider::CSettingsProvider(void) {
 	m_bRTPreserveAspectRatio = GetBool(_T("RTPreserveAspectRatio"), true);
 	m_sFileNameFormat = GetString(_T("FileNameFormat"), _T("%index% %filepath%"));
 	m_sFileNameFormat = ReplacePlaceholdersFileNameFormat(m_sFileNameFormat);
-*/
 	m_bReloadWhenDisplayedImageChanged = GetBool(_T("ReloadWhenDisplayedImageChanged"), true);
-/*
 	m_bAllowEditGlobalSettings = GetBool(_T("AllowEditGlobalSettings"), false);
 	m_dPrintMargin = GetDouble(_T("PrintMargin"), 1.0, 0.0, 100.0);
 	m_dDefaultPrintWidth = GetDouble(_T("PrintWidth"), -15.0, -1000, 1000);
@@ -406,10 +400,15 @@ CSettingsProvider::CSettingsProvider(void) {
 			nGapIndex++;
 		}
 	} while (nGapIndex <= 2);
-*/
+	
+/*GF*	MMX and AVX are not supported with linear light processing) */
+/*GF*/	if (m_eCPUAlgorithm == Helpers::CPU_MMX) {
+/*GF*/		m_eCPUAlgorithm = Helpers::CPU_Generic;
+/*GF*/	} else if (m_eCPUAlgorithm == Helpers::CPU_AVX2) {
+/*GF*/		//m_eCPUAlgorithm = Helpers::CPU_SSE;
+/*GF*/	}
 }
 
-/*
 CImageProcessingParams CSettingsProvider::LandscapeModeParams(const CImageProcessingParams& templParams) {
 	const float cfUndefined = -1;
 	const int cnParams = 12;
@@ -431,9 +430,8 @@ CImageProcessingParams CSettingsProvider::LandscapeModeParams(const CImageProces
 		(fParams[9] == cfUndefined) ? templParams.MagentaGreen : fParams[9],
 		(fParams[10] == cfUndefined) ? templParams.YellowBlue : fParams[10]);
 }
-*/
+
 void CSettingsProvider::ReadWriteableINISettings() {
-/*
 	m_dContrast = GetDouble(_T("Contrast"), 0.0, -0.5, 0.5);
 	m_dGamma = GetDouble(_T("Gamma"), 1.0, 0.1, 10.0);
 	m_dSaturation = GetDouble(_T("Saturation"), 1.0, 0.0, 2.0);
@@ -446,7 +444,6 @@ void CSettingsProvider::ReadWriteableINISettings() {
 	m_dBrightenShadows = GetDouble(_T("LDCBrightenShadows"), 0.5, 0.0, 1.0);
 	m_dDarkenHighlights = GetDouble(_T("LDCDarkenHighlights"), 0.25, 0.0, 1.0);
 	m_dBrightenShadowsSteepness = GetDouble(_T("LDCBrightenShadowsSteepness"), 0.5, 0.0, 1.0);
-*/
 	CString sNavigation = GetString(_T("FolderNavigation"), _T("LoopFolder"));
 	if (sNavigation.CompareNoCase(_T("LoopSameFolderLevel")) == 0) {
 		m_eNavigation = Helpers::NM_LoopSameDirectoryLevel;
@@ -457,12 +454,9 @@ void CSettingsProvider::ReadWriteableINISettings() {
 	else {
 		m_eNavigation = Helpers::NM_LoopDirectory;
 	}
-	CString sSorting = GetString(_T("FileDisplayOrder"), _T("FileName"));
+	CString sSorting = GetString(_T("FileDisplayOrder"), _T("LastModDate"));
 	if (sSorting.CompareNoCase(_T("CreationDate")) == 0) {
 		m_eSorting = Helpers::FS_CreationTime;
-	}
-	else if (sSorting.CompareNoCase(_T("LastModDate")) == 0) {
-		m_eSorting = Helpers::FS_LastModTime;
 	}
 	else if (sSorting.CompareNoCase(_T("FileName")) == 0) {
 		m_eSorting = Helpers::FS_FileName;
@@ -474,12 +468,11 @@ void CSettingsProvider::ReadWriteableINISettings() {
 		m_eSorting = Helpers::FS_FileSize;
 	}
 	else {
-		m_eSorting = Helpers::FS_FileName;
+		m_eSorting = Helpers::FS_LastModTime;
 	}
 	m_bIsSortedAscending = GetBool(_T("FileSortAscending"), true);
 	m_eAutoZoomMode = GetAutoZoomMode(_T("AutoZoomMode"), Helpers::ZM_FitToScreenNoZoom);
 	m_eAutoZoomModeFullscreen = GetAutoZoomMode(_T("AutoZoomModeFullscreen"), m_eAutoZoomMode);
-/*
 	m_bShowNavPanel = GetBool(_T("ShowNavPanel"), true);
 
 	m_bHQRS = GetBool(_T("HighQualityResampling"), true);
@@ -488,10 +481,12 @@ void CSettingsProvider::ReadWriteableINISettings() {
 	m_bShowFileInfo = GetBool(_T("ShowFileInfo"), false);
 	m_bKeepParams = GetBool(_T("KeepParameters"), false);
 	m_eSlideShowTransitionEffect = Helpers::ConvertTransitionEffectFromString(GetString(_T("SlideShowTransitionEffect"), _T("")));
-*/
+
+/*GF	Custom Settings of this mod */	
 /*GF*/	m_nMangaSinglePageVisibleHeight = GetInt(_T("MangaSinglePageVisibleHeight"), 75, 1, 100);
+/*GF*/	m_bTitleBarUseFileIcon = GetBool(_T("TitleBarUseFileIcon"), false);
 }
-/*
+
 void CSettingsProvider::SaveSettings(const CImageProcessingParams& procParams, 
 									 EProcessingFlags eProcFlags,
 									 Helpers::ENavigationMode eNavigationMode, Helpers::ESorting eFileSorting, bool isSortedAscending,
@@ -562,7 +557,7 @@ void CSettingsProvider::SaveCopyRenamePattern(const CString& sPattern) {
 
 	m_bUserINIExists = true;
 }
-*/
+
 void CSettingsProvider::SaveStickyWindowRect(CRect rect) {
 	if (rect != m_stickyWindowRect && !rect.IsRectEmpty()) {
 		const int BUFF_SIZE = 64;
@@ -581,7 +576,7 @@ bool CSettingsProvider::ExistsUserINI() {
 	LPCTSTR sINIFileName = GetUserINIFileName();
 	return ::GetFileAttributes(sINIFileName) != INVALID_FILE_ATTRIBUTES;
 }
-/*
+
 void CSettingsProvider::CopyUserINIFromTemplate() {
 	if (m_bStoreToEXEPath) {
 		return; // no user INI file
@@ -701,7 +696,7 @@ CString CSettingsProvider::ReplacePlaceholdersFileNameFormat(const CString& sFil
 	sNewString.Replace(_T("%filesize%"), _T("<l>"));
 	return sNewString;
 }
-*/
+
 void CSettingsProvider::MakeSureUserINIExists() {
 	if (m_bStoreToEXEPath) {
 		return; // no user INI file needed
@@ -710,10 +705,10 @@ void CSettingsProvider::MakeSureUserINIExists() {
 	// Create JPEGView appdata directory and copy INI file if it does not exist
 	::CreateDirectory(Helpers::JPEGViewAppDataPath(), NULL);
 	if (::GetFileAttributes(m_sIniNameUser) == INVALID_FILE_ATTRIBUTES) {
-		::CopyFile(m_sIniNameGlobal, m_sIniNameUser, TRUE);
+		::CopyFile(GetINITemplateName(), m_sIniNameUser, TRUE);
 	}
 }
-/*
+
 CString CSettingsProvider::GetINITemplateName() {
 	CString defaultGlobalIniName = m_sEXEPath + DEFAULT_INI_FILE_NAME;
 	CString localizedTemplate = CNLS::GetLocalizedFileName(defaultGlobalIniName, _T(""), _T("tpl"), Language());
@@ -722,7 +717,7 @@ CString CSettingsProvider::GetINITemplateName() {
 	}
 	return defaultGlobalIniName + _T(".tpl");
 }
-*/
+
 LPCTSTR CSettingsProvider::ReadUserIniString(LPCTSTR key) {
 	return ReadIniString(key, m_sIniNameUser, m_pUserKeys, m_pIniUserSectionBuffer);
 }

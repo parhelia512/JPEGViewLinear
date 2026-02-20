@@ -70,7 +70,7 @@ public:
 	double MagentaGreen; // in [-1..1], 0 means no color correction
 	double YellowBlue; // in [-1..1], 0 means no color correction
 };
-/*
+
 // Parameters used in unsharp masking
 class CUnsharpMaskParams {
 public:
@@ -94,7 +94,7 @@ public:
 	double Amount; // in [0..10]
 	double Threshold; // in [0..20]
 };
-*/
+
 // Processing flags for free rotation
 enum ERotationFlags {
 	RFLAG_None = 0,
@@ -109,7 +109,7 @@ static inline ERotationFlags SetRotationFlag(ERotationFlags eFlags, ERotationFla
 static inline bool GetRotationFlag(ERotationFlags eFlags, ERotationFlags eFlagToGet) {
 	return (eFlags & eFlagToGet) != 0;
 }
-/*
+
 // Parameters used for image rotation
 class CRotationParams {
 public:
@@ -141,7 +141,7 @@ public:
 	double FreeRotation; // Free rotation in degrees, added to Rotation, must be in [-359...360]
 	ERotationFlags Flags;
 };
-*/
+
 // Parameters used to process an image, including geometry
 class CProcessParams {
 public:
@@ -164,8 +164,14 @@ public:
 
 	int TargetWidth;
 	int TargetHeight;
+	CSize MonitorSize;
+/*
+	CRotationParams RotationParams;
+*/
 	int Rotation;
 	double Zoom;
 	CPoint Offsets;
+	CImageProcessingParams ImageProcParams;
 	EProcessingFlags ProcFlags;
+	Helpers::EAutoZoomMode AutoZoomMode;
 };

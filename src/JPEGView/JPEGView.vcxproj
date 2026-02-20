@@ -124,8 +124,8 @@
     <Link>
       <AdditionalDependencies>Dbghelp.lib;gdiplus.lib;turbojpeg-static.lib;winmm.lib;libpng16.lib;zlib.lib;jxl_dec.lib;jxl_threads.lib;libwebp.lib;libwebp.lib;libwebpdemux.lib;lcms2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>x86\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-	  <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
-	  <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
+      <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
+      <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -179,7 +179,7 @@
       </DataExecutionPrevention>
       <TargetMachine>MachineX64</TargetMachine>
       <DelayLoadDLLs>jxl_dec.dll;jxl_threads.dll;lcms2.dll</DelayLoadDLLs>
-	  <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>LIBCMT</IgnoreSpecificDefaultLibraries>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -290,9 +290,11 @@
     <ClCompile Include="ICCProfileTransform.cpp" />
     <ClCompile Include="ImageLoadThread.cpp" />
     <ClCompile Include="JPEGImage.cpp" />
+    <ClCompile Include="JPEGLosslessTransform.cpp" />
     <ClCompile Include="JPEGProvider.cpp" />
     <ClCompile Include="JPEGView.cpp" />
     <ClCompile Include="JXLWrapper.cpp" />
+    <ClCompile Include="KeyMap.cpp" />
     <ClCompile Include="MultiMonitorSupport.cpp" />
     <ClCompile Include="NLS.cpp" />
     <ClCompile Include="PNGWrapper.cpp" />
@@ -308,6 +310,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="TJPEGWrapper.cpp" />
+    <ClCompile Include="UserCommand.cpp" />
     <ClCompile Include="WEBPWrapper.cpp" />
     <ClCompile Include="WorkThread.cpp" />
     <ClCompile Include="XMMImage.cpp" />
@@ -328,8 +331,10 @@
     <ClInclude Include="ImageLoadThread.h" />
     <ClInclude Include="ImageProcessingTypes.h" />
     <ClInclude Include="JPEGImage.h" />
+    <ClInclude Include="JPEGLosslessTransform.h" />
     <ClInclude Include="JPEGProvider.h" />
     <ClInclude Include="JXLWrapper.h" />
+    <ClInclude Include="KeyMap.h" />
     <ClInclude Include="LookupTables.h" />
     <ClInclude Include="MaxImageDef.h" />
     <ClInclude Include="MessageDef.h" />
@@ -346,6 +351,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TimerEventIDs.h" />
     <ClInclude Include="TJPEGWrapper.h" />
+    <ClInclude Include="UserCommand.h" />
     <ClInclude Include="WEBPWrapper.h" />
     <ClInclude Include="WorkThread.h" />
     <ClInclude Include="XMMImage.h" />
