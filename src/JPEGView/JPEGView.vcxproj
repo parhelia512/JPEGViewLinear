@@ -76,19 +76,19 @@
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\..\deps\WTL-sf\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib;$(ProjectDir)\libpng-apng\lib;$(ProjectDir)\libjxl\lib;$(ProjectDir)\libheif\lib;$(ProjectDir)\libwebp\lib;$(ProjectDir)\libavif\lib;$(ProjectDir)\lcms2\lib;$(ProjectDir)\libraw\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\..\deps\WTL-sf\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib;$(ProjectDir)\libpng-apng\lib;$(ProjectDir)\libjxl\lib;$(ProjectDir)\libheif\lib;$(ProjectDir)\libwebp\lib;$(ProjectDir)\libavif\lib;$(ProjectDir)\lcms2\lib;$(ProjectDir)\libraw\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\..\deps\WTL-sf\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib64;$(ProjectDir)\libpng-apng\lib64;$(ProjectDir)\libjxl\lib64;$(ProjectDir)\libheif\lib64;$(ProjectDir)\libwebp\lib64;$(ProjectDir)\libavif\lib64;$(ProjectDir)\lcms2\lib64;$(ProjectDir)\libraw\lib64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)\WTL10\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\..\deps\WTL-sf\include;$(ProjectDir)\libpng-apng\include;$(ProjectDir)\libjxl\include;$(ProjectDir)\libheif\include;$(ProjectDir)\libwebp\include;$(ProjectDir)\libavif\include;$(ProjectDir)\lcms2\include;$(ProjectDir)\libraw\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)\libjpeg-turbo\lib64;$(ProjectDir)\libpng-apng\lib64;$(ProjectDir)\libjxl\lib64;$(ProjectDir)\libheif\lib64;$(ProjectDir)\libwebp\lib64;$(ProjectDir)\libavif\lib64;$(ProjectDir)\lcms2\lib64;$(ProjectDir)\libraw\lib64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -279,11 +279,13 @@
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp" />
     <ClCompile Include="ApplyFilterAVX.cpp" />
+    <ClCompile Include="AVIFWrapper.cpp" />
     <ClCompile Include="BasicProcessing.cpp" />
     <ClCompile Include="BatchCopyDlg.cpp" />
     <ClCompile Include="Clipboard.cpp" />
     <ClCompile Include="CropSizeDlg.cpp" />
     <ClCompile Include="dcraw_mod.cpp" />
+    <ClCompile Include="DesktopWallpaper.cpp" />
     <ClCompile Include="DirectoryWatcher.cpp" />
     <ClCompile Include="EXIFDisplay.cpp" />
     <ClCompile Include="EXIFDisplayCtl.cpp" />
@@ -296,6 +298,7 @@
     <ClCompile Include="GUIControls.cpp" />
     <ClCompile Include="HashCompareLPCTSTR.cpp" />
     <ClCompile Include="HEIFWrapper.cpp" />
+    <ClCompile Include="HelpDisplay.cpp" />
     <ClCompile Include="Helpers.cpp" />
     <ClCompile Include="HelpersGUI.cpp" />
     <ClCompile Include="HistogramCorr.cpp" />
@@ -323,11 +326,15 @@
     <ClCompile Include="PrintDlg.cpp" />
     <ClCompile Include="PrintImage.cpp" />
     <ClCompile Include="ProcessingThreadPool.cpp" />
+    <ClCompile Include="PSDWrapper.cpp" />
+    <ClCompile Include="QOIWrapper.cpp" />
+    <ClCompile Include="RAWWrapper.cpp" />
     <ClCompile Include="ReaderBMP.cpp" />
     <ClCompile Include="ReaderTGA.cpp" />
     <ClCompile Include="ResizeDlg.cpp" />
     <ClCompile Include="ResizeFilter.cpp" />
     <ClCompile Include="RotationPanel.cpp" />
+    <ClCompile Include="SaveImage.cpp" />
     <ClCompile Include="SettingsProvider.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -352,11 +359,13 @@
   <ItemGroup>
     <ClInclude Include="AboutDlg.h" />
     <ClInclude Include="ApplyFilterAVX.h" />
+    <ClInclude Include="AVIFWrapper.h" />
     <ClInclude Include="BasicProcessing.h" />
     <ClInclude Include="BatchCopyDlg.h" />
     <ClInclude Include="Clipboard.h" />
     <ClInclude Include="CropSizeDlg.h" />
     <ClInclude Include="dcraw_mod.h" />
+    <ClInclude Include="DesktopWallpaper.h" />
     <ClInclude Include="DirectoryWatcher.h" />
     <ClInclude Include="EXIFDisplay.h" />
     <ClInclude Include="EXIFDisplayCtl.h" />
@@ -369,6 +378,7 @@
     <ClInclude Include="GUIControls.h" />
     <ClInclude Include="HashCompareLPCTSTR.h" />
     <ClInclude Include="HEIFWrapper.h" />
+    <ClInclude Include="HelpDisplay.h" />
     <ClInclude Include="Helpers.h" />
     <ClInclude Include="HelpersGUI.h" />
     <ClInclude Include="HistogramCorr.h" />
@@ -401,12 +411,16 @@
     <ClInclude Include="PrintParameters.h" />
     <ClInclude Include="ProcessingThreadPool.h" />
     <ClInclude Include="ProcessParams.h" />
+    <ClInclude Include="PSDWrapper.h" />
+    <ClInclude Include="QOIWrapper.h" />
     <ClInclude Include="RawMetadata.h" />
+    <ClInclude Include="RAWWrapper.h" />
     <ClInclude Include="ReaderBMP.h" />
     <ClInclude Include="ReaderTGA.h" />
     <ClInclude Include="ResizeDlg.h" />
     <ClInclude Include="ResizeFilter.h" />
     <ClInclude Include="RotationPanel.h" />
+    <ClInclude Include="SaveImage.h" />
     <ClInclude Include="SettingsProvider.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TiltCorrectionPanel.h" />
