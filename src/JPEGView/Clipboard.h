@@ -12,11 +12,11 @@ public:
 	static void CopyImageToClipboard(HWND hWnd, CJPEGImage * pImage, LPCTSTR fileName);
 
 	// Copy processed full size image as a 24 bpp DIB to the clipboard, i.e. in original resolution.
-	static void CopyFullImageToClipboard(HWND hWnd, CJPEGImage * pImage,
+	static void CopyFullImageToClipboard(HWND hWnd, CJPEGImage * pImage, const CImageProcessingParams& procParams,
 		EProcessingFlags eFlags, LPCTSTR fileName);
 
 	// Copy section of full size image as a 24 bpp DIB to the clipboard, i.e. in original resolution.
-	static void CopyFullImageToClipboard(HWND hWnd, CJPEGImage * pImage,
+	static void CopyFullImageToClipboard(HWND hWnd, CJPEGImage * pImage, const CImageProcessingParams& procParams,
 		EProcessingFlags eFlags, CRect clipRect, LPCTSTR fileName);
 
 	// Copy file path to the clipboard.

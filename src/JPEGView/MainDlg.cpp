@@ -276,6 +276,7 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	// determine the monitor rectangle and client rectangle
 	CSettingsProvider& sp = CSettingsProvider::This();
+
 	// intitialize list of files to show with startup file (and folder)
 	m_pFileList = new CFileList(m_sStartupFile, *m_pDirectoryWatcher,
 		(m_eForcedSorting == Helpers::FS_Undefined) ? sp.Sorting() : m_eForcedSorting, sp.IsSortedAscending(), sp.WrapAroundFolder(),
@@ -345,10 +346,10 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 			CSize newSize = GetVirtualImageSize();
 			CSize clippedSize(min(m_clientRect.Width(), newSize.cx), min(m_clientRect.Height(), newSize.cy));
 			CPoint offsetsInImage = m_pCurrentImage->ConvertOffset(newSize, clippedSize, Helpers::LimitOffsets(m_offsets, m_clientRect.Size(), newSize));
-			m_pCurrentImage->GetDIB(newSize, clippedSize, offsetsInImage, PFLAG_HighQualityResampling);
+			m_pCurrentImage->GetDIB(newSize, clippedSize, offsetsInImage, *m_pImageProcParams, PFLAG_HighQualityResampling);
 		}
 
-		SetWindowLong(GWL_STYLE, WS_VISIBLE);
+		SetWindowLongW(GWL_STYLE, WS_VISIBLE);
 		SetWindowPos(HWND_TOP, &m_monitorRect, SWP_NOZORDER);
 	}
 
@@ -479,7 +480,7 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 /* Debugging */	double t1 = Helpers::GetExactTickCount();
 
 		void* pDIBData;
-		pDIBData = m_pCurrentImage->GetDIB(newSize, clippedSize, offsetsInImage, (m_bTemporaryLowQ ? PFLAG_None : PFLAG_HighQualityResampling));
+		pDIBData = m_pCurrentImage->GetDIB(newSize, clippedSize, offsetsInImage, *m_pImageProcParams, (m_bTemporaryLowQ ? PFLAG_None : PFLAG_HighQualityResampling));
 
 
 		// Paint the DIB
@@ -1954,10 +1955,9 @@ bool CMainDlg::CloseHelpDlg() {
 }
 */
 void CMainDlg::ExecuteCommand(int nCommand) {
-/*
 	CSettingsProvider& sp = CSettingsProvider::This();
-	InvalidateHelpDlg();
-*/
+//	InvalidateHelpDlg();
+
 	switch (nCommand) {
 /*
 		case IDM_HELP:
@@ -2029,7 +2029,7 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 */
 		case IDM_COPY_FULL:
 			if (m_pCurrentImage != NULL) {
-				CClipboard::CopyFullImageToClipboard(this->m_hWnd, m_pCurrentImage, PFLAG_HighQualityResampling, m_pFileList->Current());
+				CClipboard::CopyFullImageToClipboard(this->m_hWnd, m_pCurrentImage, *m_pImageProcParams, PFLAG_HighQualityResampling, m_pFileList->Current());
 				//this->Invalidate(FALSE);
 			}
 			break;
@@ -3433,6 +3433,8 @@ CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool T
 		}
 	}
 
+	Helpers::EAutoZoomMode eAutoZoomMode = GetAutoZoomMode();
+	
 	m_bHQResampling = true;
 	m_nRotation = 0;
 	m_dZoom = -1;
@@ -3442,7 +3444,24 @@ CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool T
 	// dZoom is the zoom factor compared to intial image size (1.0 means no zoom)
 	// offsets are relative to center of image and refer to original image size (not zoomed)
 	// CProcessParams(int nTargetWidth, int nTargetHeight, int nRotation, double dZoom, CPoint offsets, EProcessingFlags eProcFlags)
-	return CProcessParams(nClientWidth, nClientHeight, 0, -1, m_offsets, PFLAG_HighQualityResampling);
+
+		return CProcessParams(nClientWidth, nClientHeight,
+			0,			// nRotation
+			-1, 		// dZoom
+			m_offsets,	// CPoint offsets
+			PFLAG_HighQualityResampling);	// EProcessingFlags eProcFlags
+
+/*
+		return CProcessParams(nClientWidth, nClientHeight, 
+			CMultiMonitorSupport::GetMonitorRect(m_hWnd).Size(),	// CSize monitorSize
+			CRotationParams(0),										// CRotationParams& rotationParams
+			0,														// int nUserRotation
+			-1,														// double dZoom
+			eAutoZoomMode,											// Helpers::EAutoZoomMode eAutoZoomMode
+			CPoint(0, 0),											// CPoint offsets
+			_SetLandscapeModeParams(m_bLandscapeMode, GetDefaultProcessingParams()),	// CImageProcessingParams& imageProcParams
+			SetProcessingFlag(_SetLandscapeModeFlags(GetDefaultProcessingFlags(m_bLandscapeMode)), PFLAG_NoProcessingAfterLoad, bNoProcessingAfterLoad));	// EProcessingFlags eProcFlags
+*/
 }
 
 void CMainDlg::ResetParamsToDefault() {

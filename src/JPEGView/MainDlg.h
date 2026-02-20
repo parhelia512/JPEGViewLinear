@@ -182,9 +182,7 @@ public:
 	double GetZoom() { return m_dZoom; }
 	int GetRotation() { return m_nRotation; }
 	CJPEGImage* GetCurrentImage() { return m_pCurrentImage; }
-/*
 	CPanelMgr* GetPanelMgr() { return m_pPanelMgr; }
-*/
 	LPCTSTR CurrentFileName(bool bFileTitle);
 	CFileList* GetFileList() { return m_pFileList; }
 /*
@@ -353,8 +351,8 @@ private:
 	CUnsharpMaskPanelCtl* m_pUnsharpMaskPanelCtl;
 	CRotationPanelCtl* m_pRotationPanelCtl;
 	CTiltCorrectionPanelCtl* m_pTiltCorrectionPanelCtl;
-	CPanelMgr* m_pPanelMgr;
 */
+	CPanelMgr* m_pPanelMgr;
 	CKeyMap* m_pKeyMap;
 /*
 	CPrintImage* m_pPrintImage;

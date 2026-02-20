@@ -35,7 +35,23 @@ static void* SampleDown_SSE_Core_f32(CSize fullTargetSize, CPoint fullTargetOffs
 static void* SampleDown_AVX_Core_f32(CSize fullTargetSize, CPoint fullTargetOffset, CSize clippedTargetSize, CSize sourceSize, const void* pIJLPixels, int nChannels, EFilterType eFilter, uint8* pTarget);
 static void* SampleUp_SSE_Core_f32(CSize fullTargetSize, CPoint fullTargetOffset, CSize clippedTargetSize, CSize sourceSize, const void* pIJLPixels, int nChannels, uint8* pTarget);
 static void* SampleUp_AVX_Core_f32(CSize fullTargetSize, CPoint fullTargetOffset, CSize clippedTargetSize, CSize sourceSize, const void* pIJLPixels, int nChannels, uint8* pTarget);
+/*
+static void* ApplyLDC32bpp_Core(CSize fullTargetSize, CPoint fullTargetOffset, CSize dibSize,
+	CSize ldcMapSize, const void* pDIBPixels, const int32* pSatLUTs, const uint8* pLUT, const uint8* pLDCMap,
+	float fBlackPt, float fWhitePt, float fBlackPtSteepness, uint32* pTarget);
 
+static int16* GaussFilter16bpp1Channel_Core(CSize fullSize, CPoint offset, CSize rect, int nTargetWidth, double dRadius,
+	const int16* pSourcePixels, int16* pTargetPixels);
+
+static void* UnsharpMask_Core(CSize fullSize, CPoint offset, CSize rect, double dAmount, const int16* pThresholdLUT,
+	const int16* pGrayImage, const int16* pSmoothedGrayImage, const void* pSourcePixels, void* pTargetPixels, int nChannels);
+
+static void* RotateHQ_Core(CPoint targetOffset, CSize targetSize, double dRotation, CSize sourceSize,
+	const void* pSourcePixels, void* pTargetPixels, int nChannels, COLORREF backColor);
+
+static void* TrapezoidHQ_Core(CPoint targetOffset, CSize targetSize, const CTrapezoid& trapezoid, CSize sourceSize,
+	const void* pSourcePixels, void* pTargetPixels, int nChannels, COLORREF backColor);
+*/
 //---------------------------------------------------------------------------------------------
 
 // Request for upsampling or downsampling
@@ -74,6 +90,52 @@ public:
 	EFilterType Filter;
 	CBasicProcessing::SIMDArchitecture SIMD;
 };
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Dimming of part of image and drawing of rectangles
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void CBasicProcessing::DimRectangle32bpp(int nWidth, int nHeight, void* pDIBPixels, CRect rect, float fDimValue) {
+	CRect rectTarget;
+	rectTarget.IntersectRect(CRect(0, 0, nWidth, nHeight), rect);
+	if (pDIBPixels == NULL || rectTarget.IsRectEmpty()) {
+		return;
+	}
+	uint8 alphaLUT[256];
+	int nFactor = (int)(fDimValue*65536 + 0.5f);
+	for (int a = 0; a < 256; a++) {
+		alphaLUT[a] = a*nFactor >> 16;
+	}
+
+	uint32* pSrc = (uint32*) pDIBPixels + rectTarget.top*nWidth + rectTarget.left;
+	for (int j = 0; j < rectTarget.Height(); j++) {
+		uint32* pLine = pSrc;
+		for (int i = 0; i < rectTarget.Width(); i++) {
+			uint32 nPixel = *pLine;
+			*pLine++ = alphaLUT[nPixel & 0xFF] + 256*alphaLUT[(nPixel >> 8) & 0xFF] + 65536*alphaLUT[(nPixel >> 16) & 0xFF] + ALPHA_OPAQUE;
+		}
+		pSrc += nWidth;
+	}
+}
+
+void CBasicProcessing::FillRectangle32bpp(int nWidth, int nHeight, void* pDIBPixels, CRect rect, COLORREF color) {
+	CRect rectTarget;
+	rectTarget.IntersectRect(CRect(0, 0, nWidth, nHeight), rect);
+	if (pDIBPixels == NULL || rectTarget.IsRectEmpty()) {
+		return;
+	}
+
+	color = color | ALPHA_OPAQUE;
+	uint32* pSrc = (uint32*) pDIBPixels + rectTarget.top*nWidth + rectTarget.left;
+	for (int j = 0; j < rectTarget.Height(); j++) {
+		uint32* pLine = pSrc;
+		for (int i = 0; i < rectTarget.Width(); i++) {
+			uint32 nPixel = *pLine;
+			*pLine++ = color;
+		}
+		pSrc += nWidth;
+	}
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Conversion and rotation methods
@@ -496,7 +558,82 @@ static uint8* ApplyFilter(int nSourceWidth, int nTargetWidth, int nHeight,
 
 	return pTarget;
 }
+/*
+// Apply filtering in x-direction and rotate, 16 bpp 1 channel image
+// NOTE: No saturation is done, only valid for filters that do not require saturation.
+// The filter is applied to the pixel centers, therefore no resize filters are possible.
+// nSourceWidth : Width of source in pixels
+// nTargetWidth: Width of target image in pixels (note that target image is rotated compared to source)
+// nStartX, nStartY: Start position for filtering in source image
+// nRunX, nRunY: Number of pixels in x and y to filter
+// filter: Filter to apply (in x direction)
+// pSource: Source image
+// pTarget: Target image, width must be nTargetWidth
+static void ApplyFilter1C16bpp(int nSourceWidth, int nTargetWidth,
+							   int nStartX, int nStartY,
+							   int nRunX, int nRunY,
+							   const FilterKernelBlock& filter,
+							   const int16* pSource, int16* pTarget) {
 
+	for (int j = 0; j < nRunY; j++) {
+		const int16* pSourcePixelLine = pSource + nStartX + nSourceWidth * (j + nStartY);
+		int16* pTargetPixelLine = pTarget + j;
+		int16* pTargetPixel = pTargetPixelLine;
+		for (int i = 0; i < nRunX; i++) {
+			FilterKernel* pKernel = filter.Indices[i + nStartX];
+			const int16* pSourcePixel = pSourcePixelLine + i - pKernel->FilterOffset;
+			int nPixelValue = 0;
+			for (int n = 0; n < pKernel->FilterLen; n++) {
+				nPixelValue += pKernel->Kernel[n] * pSourcePixel[n];
+			}
+			nPixelValue = nPixelValue >> 14;
+
+			*pTargetPixel = nPixelValue;
+			// rotate: go to next row in target
+			pTargetPixel += nTargetWidth;
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Gauss filter (C++ implementation)
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+int16* GaussFilter16bpp1Channel_Core(CSize fullSize, CPoint offset, CSize rect, int nTargetWidth, double dRadius, 
+													  const int16* pSourcePixels, int16* pTargetPixels) {
+	CGaussFilter filterX(fullSize.cx, dRadius);
+	ApplyFilter1C16bpp(fullSize.cx, nTargetWidth, offset.x, offset.y, rect.cx, rect.cy, filterX.GetFilterKernels(), pSourcePixels, pTargetPixels);
+	return pTargetPixels;
+}
+
+int16* CBasicProcessing::GaussFilter16bpp1Channel(CSize fullSize, CPoint offset, CSize rect, double dRadius, const int16* pPixels) {
+	if (pPixels == NULL) {
+		return NULL;
+	}
+
+	// Gauss filter x-direction
+	CProcessingThreadPool& threadPool = CProcessingThreadPool::This();
+	int16* pIntermediate = new(std::nothrow) int16[rect.cx * rect.cy];
+	if (pIntermediate == NULL) return NULL;
+	CRequestGauss requestX(pPixels, fullSize, offset, rect, dRadius, pIntermediate);
+	if (!threadPool.Process(&requestX)) {
+		delete[] pIntermediate;
+		return NULL;
+	}
+
+	// Gauss filter y-direction
+	int16* pTargetPixels = new(std::nothrow) int16[rect.cx * rect.cy];
+	if (pTargetPixels == NULL) {
+		delete[] pIntermediate;
+		return NULL;
+	}
+	CRequestGauss requestY(pIntermediate, CSize(rect.cy, rect.cx), CPoint(0, 0), CSize(rect.cy, rect.cx), dRadius, pTargetPixels);
+	bool bSuccess = threadPool.Process(&requestY);
+	delete[] pIntermediate;
+
+	return bSuccess ? pTargetPixels : NULL;
+}
+*/
 /////////////////////////////////////////////////////////////////////////////////////////////
 // High quality upsampling (C++ implementation)
 // Used with generic CPUs where no SIMD extensions are available (SSE and AVX2).

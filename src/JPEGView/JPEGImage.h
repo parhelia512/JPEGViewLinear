@@ -52,11 +52,11 @@ public:
 	// method multiple times with the same set of parameters will return the same image starting from the second
 	// call without doing image processing anymore.
 	void* GetDIB(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
-		EProcessingFlags eProcFlags) {
+		const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags) {
 		bool bNotUsed;
-		return GetDIBInternal(fullTargetSize, clippingSize, targetOffset, eProcFlags, bNotUsed);
+		return GetDIBInternal(fullTargetSize, clippingSize, targetOffset, imageProcParams, eProcFlags, NULL, NULL, 0.0, false, bNotUsed);
 	}
-/*
+
 	// Gets resampled and processed DIB image (up or downsampled), also including a low quality rotation.
 	// The rotation angle is specified in radians.
 	// PFLAG_HighQualityResampling must not be set when calling this method 
@@ -107,7 +107,7 @@ public:
 
 	// Apply unsharp masking to the original image pixels. Cannot be undone except by reloading the image from disk.
 	// Returns false if not enough memory is available to perform the operation.
-	bool ApplyUnsharpMaskToOriginalPixels(const CUnsharpMaskParams & unsharpMaskParams);
+//	bool ApplyUnsharpMaskToOriginalPixels(const CUnsharpMaskParams & unsharpMaskParams);
 
 	// Mirrors the image horizontally or vertically.
 	// Applies to original pixels!
@@ -116,7 +116,7 @@ public:
 	// Crops the image. 
 	// Applies to original pixels!
 	bool Crop(CRect cropRect);
-*/
+
 	// Rotate the image clockwise by 90, 180 or 270 degrees. All other angles are invalid.
 	// Applies to original pixels!
 	bool Rotate(int nRotation);
@@ -127,12 +127,12 @@ public:
 	// In all cases the size of the image in pixels is changed by the rotation.
 	// Returns false if not enough memory is available to perform the operation.
 	bool RotateOriginalPixels(double dRotation, bool bAutoCrop, bool bKeepAspectRatio);
-/*
+
 	// Transform original pixels into horizontal trapezoid. The original pixels are replaced by this operation.
 	// See RotateOriginalPixels() for auto crop parameter and keep aspect ratio parameter.
 	// In all cases the size of the image in pixels is changed by this operation.
 	// Returns false if not enough memory is available to perform the operation.
-	bool TrapezoidOriginalPixels(const CTrapezoid& trapezoid, bool bAutoCrop, bool bKeepAspectRatio);
+//	bool TrapezoidOriginalPixels(const CTrapezoid& trapezoid, bool bAutoCrop, bool bKeepAspectRatio);
 
 	// Resizes the original pixels to the given target size.
 	// Returns false if not enough memory is available to perform the operation or if specified size is not valid.
@@ -143,7 +143,7 @@ public:
 
 	// Gets the histogram of the processed image - histogram is over the whole image, not only the visible section
 	const CHistogram* GetProcessedHistogram();
-*/
+
 	// Gets the hash value of the pixels, for JPEGs the hash is on the compressed pixels
 	__int64 GetPixelHash() const { return m_nPixelHash; }
 
@@ -167,13 +167,20 @@ public:
 	// Convert DIB coordinates into original image coordinates and vice versa
 	void DIBToOrig(float & fX, float & fY);
 	void OrigToDIB(float & fX, float & fY);
-/*
+
 	// Gets the rotation applied to the pixels
-	const CRotationParams& GetRotationParams() {return m_rotationParams; }
-*/
+//	const CRotationParams& GetRotationParams() {return m_rotationParams; }
+
 	// Gets or sets the JPEG chromo sampling. See turbojpeg.h for the TJSAMP enumeration.
 	TJSAMP GetJPEGChromoSampling() { return m_eJPEGChromoSampling; }
 	void SetJPEGChromoSampling(TJSAMP eSampling) { m_eJPEGChromoSampling = eSampling; }
+
+	// Gets if lossless JPEG transformations can be applied to this image.
+	// Checks if this is a JPEG image and if the dimension of this image is dividable by the JPEG block size used.
+	bool CanUseLosslessJPEGTransformations();
+
+	// Trims the given rectangle to MCU block size of this image (allowing lossless JPEG transformations)
+	void TrimRectToMCUBlockSize(CRect& rect);
 
 	// Declare the cached DIB as invalid - forcing it to be regenerated on next GetDIB() call
 	void SetDIBInvalid() { m_ClippingSize = CSize(0, 0); }
@@ -182,15 +189,14 @@ public:
 	bool VerifyRotation(int nRotation);
 	bool VerifyRotation(const CRotationParams& rotationParams);
 
-	// Mirrors the image horizontally or vertically.
-	// Applies to original image!
-	bool Mirror(bool bHorizontally);
-
 	// Returns if this image has been cropped or not
 	bool IsCropped() { return m_bCropped; }
 
 	// Returns if this image's original pixels have been processed destructively (e.g. cropped or rotated by non-90 degrees steps)
 	bool IsDestructivelyProcessed() { return m_bIsDestructivelyProcessed; }
+
+	// Returns if this image has been processed in a way not supported to be stored in the parameter DB.
+	bool IsProcessedNoParamDB() { return m_bIsProcessedNoParamDB; }
 
 	// raw access to original pixels - do not delete or store the returned pointer
 	void* OriginalPixels() { return  m_pOrigPixels; }
@@ -206,8 +212,14 @@ public:
 	void* DIBPixels() { return m_pDIBPixels; }
 	const void* DIBPixels() const { return m_pDIBPixels; }
 
+	// Verifies that the original DIB pixels (DIBPixels()) are available
+	void VerifyDIBPixelsCreated();
+
 	// Gets the DIB last processed. If none, the last used parameters are taken to generate the DIB - if bGenerateDIBIfNeeded is true 
 	void* DIBPixelsLastProcessed(bool bGenerateDIBIfNeeded);
+
+	// Gets the DIB pixels of the last processed thumbnail image, NULL if none or invalid
+	void* DIBPixelsLastThumbnail() { return (m_pThumbnail == NULL) ? NULL : m_pThumbnail->DIBPixelsLastProcessed(false); }
 
 	// Gets the image processing flags as set as default (may varies from file to file)
 	EProcessingFlags GetInitialProcessFlags() const { return m_eProcFlagsInitial; }
@@ -310,6 +322,11 @@ public:
 	// Converts the target offset from 'center of image' based format to pixel coordinate format 
 	static CPoint ConvertOffset(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset);
 
+	// Debug: Returns if this could be a night shot (heuristic, between 0 and 1)
+	float IsNightShot() const;
+
+	// Debug: Returns if this could be a sun set (heuristic, between 0 and 1)
+	float IsSunset() const;
 
 	// Debug: Ticks (milliseconds) of the last operation
 	double LastOpTickCount() const { return m_dLastOpTickCount; }
@@ -317,6 +334,9 @@ public:
 	// Debug: Loading time of image in ms
 	void SetLoadTickCount(double tc) { m_dLoadTickCount = tc; }
 	double GetLoadTickCount() { return m_dLoadTickCount; }
+
+	// Debug: Unsharp mask time of image in ms
+	double GetUnsharpMaskTickCount() { return m_dUnsharpMaskTickCount; }
 
 private:
 
@@ -358,6 +378,7 @@ private:
 
 	// Thumbnail related stuff
 	bool m_bIsThumbnailImage;
+	CHistogram* m_pCachedProcessedHistogram;
 
 	// Processed data of size m_ClippingSize, with LUT/LDC applied and without
 	// The version without LUT/LDC is used to efficiently reapply a different LUT/LDC
@@ -387,9 +408,7 @@ private:
 	bool m_bCropped; // Image has been cropped
 	bool m_bIsDestructivelyProcessed; // Original image pixels destructively processed (i.e. cropped or size changed)
 	bool m_bIsProcessedNoParamDB;
-/*
 	CRotationParams m_rotationParams; // current rotation
-*/
 	uint32 m_nRotation;	// GF: Todo: Switch to m_rotationParams
 	bool m_bRotationByEXIF; // is the rotation given by EXIF
 
@@ -427,8 +446,9 @@ private:
 	// bUsingOriginalDIB is output parameter and contains if the cached DIB could be used and no processing has been done
 	// When dRotation is not 0.0, PFLAG_HighQualityResampling must not be set
 	void* GetDIBInternal(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset,
-						 EProcessingFlags eProcFlags,
-						 bool& bParametersChanged);
+						 const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags,
+						 const CUnsharpMaskParams * pUnsharpMaskParams, const CTrapezoid * pTrapezoid, 
+						 double dRotation, bool bShowGrid, bool& bParametersChanged);
 
 	// Resample when panning was done, using existing data in DIBs. Old clipping rectangle is given in oldClippingRect
 	void ResampleWithPan(void* & pDIBPixels, void* & pDIBPixelsLUTProcessed, CSize fullTargetSize, 
@@ -438,6 +458,10 @@ private:
 	// Resample to given target size. Returns resampled DIB
 	void* Resample(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, 
 		EProcessingFlags eProcFlags, EResizeType eResizeType);
+
+	// Resize to given target size. Returns resampled DIB. Used when resizing original pixels.
+	void* InternalResize(void* pixels, int channels, EResizeFilter filter, CSize targetSize, CSize sourceSize);
+
 
 	// pCachedTargetDIB is a pointer at the caller side holding the old processed DIB.
 	// Returns a pointer to DIB to be used (either pCachedTargetDIB or pSourceDIB)
@@ -463,12 +487,12 @@ private:
 	EProcessingFlags GetProcFlagsIncludeExcludeFolders(LPCTSTR sFileName, EProcessingFlags procFlags) const;
 
 	// Return size of original image if the image would be rotated the given amount
-	//CSize SizeAfterRotation(const CRotationParams& rotationParams);
+	CSize SizeAfterRotation(const CRotationParams& rotationParams);
 	CSize SizeAfterRotation(int nRotation);
-/*
+
 	// Gets the new size of the image after doing a free rotation
 	static CSize GetSizeAfterFreeRotation(const CSize& sourceSize, double dRotation, bool bAutoCrop, bool bKeepAspectRatio, CPoint & offset);
-*/
+
 	// Get if from source to target size it is down or upsampling
 	EResizeType GetResizeType(CSize targetSize, CSize sourceSize);
 
@@ -480,4 +504,12 @@ private:
 
 	// Called when the original pixels have changed (rotate, crop, unsharp mask), all cached pixel data gets invalid
 	void InvalidateAllCachedPixelData();
+
+	// Create a thumbnail image of this image
+	CJPEGImage* CreateThumbnailImage();
+
+	// Create histogram of the processed DIB (in original size) using the given image processing parameters
+	const CHistogram* GetHistogramOfProcessedDIB(const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags);
+
+	void DrawGridLines(void * pDIB, const CSize& dibSize);
 };
