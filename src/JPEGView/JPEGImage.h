@@ -178,7 +178,7 @@ public:
 	// Declare the cached DIB as invalid - forcing it to be regenerated on next GetDIB() call
 	void SetDIBInvalid() { m_ClippingSize = CSize(0, 0); }
 
-	// Verify that the image is currently rotated by the given angle and rotate the image if not. nRotation must be 0, 90, 180, 270
+	// Verify that the image is currently rotated by the specified parameters and rotate the original pixels of the image if not.
 	bool VerifyRotation(int nRotation);
 	bool VerifyRotation(const CRotationParams& rotationParams);
 
@@ -193,13 +193,13 @@ public:
 	bool IsDestructivelyProcessed() { return m_bIsDestructivelyProcessed; }
 
 	// raw access to original pixels - do not delete or store the returned pointer
-	void* IJLPixels() { return  m_pOrigPixels; }
-	const void* IJLPixels() const { return m_pOrigPixels; }
-	// remove IJL pixels form class - will be NULL afterwards
-	void DetachIJLPixels() { m_pOrigPixels = NULL; }
+	void* OriginalPixels() { return  m_pOrigPixels; }
+	const void* OriginalPixels() const { return m_pOrigPixels; }
+	// remove original pixels from class - OriginalPixels() will return NULL afterwards
+	void DetachOriginalPixels() { m_pOrigPixels = NULL; }
 
 	// returns the number of channels in the OriginalPixels (3 or 4, corresponding to 24 bpp and 32 bpp)
-	int IJLChannels() const { return m_nOriginalChannels; }
+	int OriginalChannels() const { return m_nOriginalChannels; }
 
 	// raw access to DIB pixels with no LUT applied - do not delete or store the returned pointer
 	// note that this DIB can be NULL due to optimization if currently only the processed DIB is maintained
