@@ -254,6 +254,13 @@
 #define IDM_ZOOM_INC		12100		// :KeyMap: zoom in
 #define IDM_ZOOM_DEC		12200		// :KeyMap: zoom out
 #define IDM_ZOOM_MODE		12300
+
+#define IDM_CUSTOM_RANDOM_TOGGLE	12450		// :KeyMap: toggle between random and name sort
+#define IDM_CUSTOM_FIT_TOGGLE		12451		// :KeyMap: toggle between original size and fit window
+#define IDM_CUSTOM_OVERLAY_TOGGLE	12452		// :KeyMap: toggle custom overlay
+#define IDM_CUSTOM_LANGUAGE_SWITCH	12453		// :KeyMap: jump between different language manga pages in sibling pathes
+#define IDM_CUSTOM_EDIT_ACTION		12454		// :KeyMap: open image with default registry edit action of this file type
+
 #define IDM_AUTO_ZOOM_FIT_NO_ZOOM	12500		// :KeyMap: set auto zoom mode fit to screen, never zoom
 #define IDM_AUTO_ZOOM_FILL_NO_ZOOM	12510		// :KeyMap: set auto zoom mode fill screen, never zoom
 #define IDM_AUTO_ZOOM_FIT	12520		// :KeyMap: set auto zoom mode fit to screen

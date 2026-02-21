@@ -97,7 +97,7 @@ private:
 	CString m_sLastWebpFileName; // Only for animated WebP files
 	CString m_sLastPngFileName; // Only for animated PNG files
 	CString m_sLastJxlFileName; // Only for animated JPEG XL files
-//	CString m_sLastAvifFileName; // Only for animated AVIF files
+	CString m_sLastAvifFileName; // Only for animated AVIF files
 
 	virtual void ProcessRequest(CRequestBase& request);
 	virtual void AfterFinishProcess(CRequestBase& request);
@@ -105,7 +105,7 @@ private:
 	void DeleteCachedWebpDecoder();
 	void DeleteCachedPngDecoder();
 	void DeleteCachedJxlDecoder();
-//	void DeleteCachedAvifDecoder();
+	void DeleteCachedAvifDecoder();
 
 	void ProcessReadJPEGRequest(CRequest * request);
 	void ProcessReadPNGRequest(CRequest * request);
@@ -113,13 +113,13 @@ private:
 	void ProcessReadTGARequest(CRequest * request);
 	void ProcessReadWEBPRequest(CRequest * request);
 	void ProcessReadJXLRequest(CRequest* request);
-//	void ProcessReadAVIFRequest(CRequest* request);
-//	void ProcessReadHEIFRequest(CRequest * request);
-//	void ProcessReadQOIRequest(CRequest * request);
-//	void ProcessReadPSDRequest(CRequest * request);
-//	void ProcessReadRAWRequest(CRequest * request);
+	void ProcessReadAVIFRequest(CRequest* request);
+	void ProcessReadHEIFRequest(CRequest * request);
+	void ProcessReadQOIRequest(CRequest * request);
+	void ProcessReadPSDRequest(CRequest * request);
+	void ProcessReadRAWRequest(CRequest * request);
 	void ProcessReadGDIPlusRequest(CRequest * request);
-//	void ProcessReadWICRequest(CRequest* request);
+	void ProcessReadWICRequest(CRequest* request);
 
 	static void SetFileDependentProcessParams(CRequest * request);
 	static bool ProcessImageAfterLoad(CRequest * request);

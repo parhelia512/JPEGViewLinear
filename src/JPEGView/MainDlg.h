@@ -417,7 +417,8 @@ private:
 	MyDwmFlushType m_DynDwmFlush;
 	bool m_bMangaMode;
 	CPoint m_offsets_custom;
-	void DeleteImageShown();
 	void SaveBookmark();
 	CString ReplaceNoCase(LPCTSTR instr,LPCTSTR oldstr,LPCTSTR newstr);
+	void ToggleBookLanguage();
+	void EditFileInDefaultExternalApplication();
 };

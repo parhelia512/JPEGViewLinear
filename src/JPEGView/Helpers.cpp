@@ -973,7 +973,7 @@ int GetWindowsVersion() {
 }
 
 // [GF] Used in "SettingsProvider.cpp" to set "m_nNumCores"
-// You need to include <thread> for this
+// Needs "#include <thread>"
 int NumConcurrentThreads(void) {
 	if (!CPUSupportsHWMultiprocessing()) {
 		return 1;

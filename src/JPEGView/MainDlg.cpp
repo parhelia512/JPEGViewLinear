@@ -600,6 +600,14 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 		
 		DeleteObject(hFont);
 	} else {
+		// do this as very first - may changes size of image
+		m_pCurrentImage->VerifyRotation(CRotationParams(m_pCurrentImage->GetRotationParams(), m_nRotation));
+
+		// Find out zoom multiplier if not yet known
+		if (m_dZoomMult < 0.0) {
+			m_dZoomMult = GetZoomMultiplier(m_pCurrentImage, m_clientRect);
+		}
+		
 		// find out the new virtual image size and the size of the bitmap to request
 		CSize newSize = GetVirtualImageSize();
 		m_virtualImageSize = newSize;
@@ -879,7 +887,6 @@ LRESULT CMainDlg::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL&
 }
 
 LRESULT CMainDlg::OnLButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-/*
 	this->SetCapture();
 	bool isCropping = m_pCropCtl->IsCropping();
 	CPoint pointClicked(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
@@ -913,12 +920,9 @@ LRESULT CMainDlg::OnLButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 	}
 
 	m_pCropCtl->ResetStartCropOnNextClick();
-*/
-	GotoImage(POS_Previous);
 	return 0;
 }
 LRESULT CMainDlg::OnLButtonUp(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-/*
 	if (m_bZoomMode) {
 		m_bZoomMode = false;
 		AdjustWindowToImage(false);
@@ -938,7 +942,6 @@ LRESULT CMainDlg::OnLButtonUp(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, B
 	}
 	::ReleaseCapture();
 	InvalidateHelpDlg();
-*/
 	return 0;
 }
 
@@ -961,51 +964,37 @@ LRESULT CMainDlg::OnNCHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHa
 }
 
 LRESULT CMainDlg::OnNCLButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
-/*
 	m_dZoomAtResizeStart = m_dZoom;
 	bHandled = FALSE; // do not handle message, this would block correct processing by OS
-*/
 	return 0;
 }
 
 LRESULT CMainDlg::OnRButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
-/*
 	bHandled = HandleMouseButtonByKeymap(VK_RBUTTON);
 	return 0;
-*/
-	GotoImage(POS_Next);
-	return 1;
 }
 
 LRESULT CMainDlg::OnRButtonUp(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
-/*
 	bHandled = HandleMouseButtonByKeymap(VK_RBUTTON, false);
-*/
 	return 0;
 }
 
 LRESULT CMainDlg::OnMButtonDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-/*
 	this->SetCapture();
 	if (HandleMouseButtonByKeymap(VK_MBUTTON)) {
 		return 0;
 	}
 	StartDragging(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), false);
-*/
-	ExecuteCommand(IDM_FULL_SCREEN_MODE);
 	return 0;
 }
 
 LRESULT CMainDlg::OnMButtonUp(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-/*
 	EndDragging();
 	::ReleaseCapture();
-*/
 	return 0;
 }
 
 LRESULT CMainDlg::OnLButtonDblClk(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
-/*
 	if (!m_bDragging && !m_pCropCtl->IsCropping()) {
 		if (m_pPanelMgr->OnMouseLButton(MouseEvent_BtnDblClk, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam))) {
 			return 0;
@@ -1024,13 +1013,10 @@ LRESULT CMainDlg::OnLButtonDblClk(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPara
 			ResetZoomTo100Percents(true);
 		}
 	}
-*/
-	GotoImage(POS_Previous);	// same as CMainDlg::OnLButtonDblClk()
 	return 0;
 }
 
 LRESULT CMainDlg::OnXButtonDown(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-/*
 	if (!m_pPanelMgr->IsModalPanelShown()) {
 		if (HandleMouseButtonByKeymap((GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? VK_XBUTTON1 : VK_XBUTTON2)) {
 			return 0;
@@ -1042,7 +1028,6 @@ LRESULT CMainDlg::OnXButtonDown(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/,
 			GotoImage(bExchangeXButtons ? POS_Previous : POS_Next);
 		}
 	}
-*/
 	return 0;
 }
 
@@ -1071,10 +1056,57 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 	bool bShift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
 	int nDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 
-	if (bCtrl && bShift) {		// Zoom
-		MouseOn();
-		PerformZoom(double(nDelta)/WHEEL_DELTA, false, m_bMouseOn, false);
-	} else if (bShift) {		// Pan horizontally
+	if (!bCtrl && !bShift) {
+		if (CSettingsProvider::This().NavigateWithMouseWheel() && !m_pPanelMgr->IsModalPanelShown()) {
+			if (nDelta < 0) {
+				GotoImage(POS_Next);
+			} else if (nDelta > 0) {
+				GotoImage(POS_Previous);
+			}
+		} else {
+			// [GF] Smart handling:
+			// Pan vertically (if image is higher than window)
+			// OR go to previous/next image (if image smaller)
+			if (m_pCurrentImage != NULL) {
+				if (nDelta < 0) {
+					if (m_bMangaMode == true) {
+						if (PerformPan(0, -PAN_STEP, false) == true) {
+							this->Invalidate(FALSE);
+						}
+					} else {
+						unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
+						if (iRealHeight > m_clientRect.Height()) {
+							if (PerformPan(0, -PAN_STEP, false) == true) {
+								this->Invalidate(FALSE);
+							}
+						} else {
+							GotoImage(POS_Next);
+						}
+					}
+				}
+				else if (nDelta > 0) {
+					if (m_bMangaMode == true) {
+						if (PerformPan(0, PAN_STEP, false) == true) {
+							this->Invalidate(FALSE);
+						}
+					} else {
+						unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
+						if (iRealHeight > m_clientRect.Height()) {
+							if (PerformPan(0, PAN_STEP, false) == true) {
+								this->Invalidate(FALSE);
+							}
+						} else {
+							GotoImage(POS_Previous);
+						}
+					}
+				}
+			}
+		}
+	} else if (bCtrl && bShift) {	// Zoom
+		if (m_dZoom > 0 && !m_pUnsharpMaskPanelCtl->IsVisible()) {
+			PerformZoom(CSettingsProvider::This().MouseWheelZoomSpeed() * double(nDelta) / WHEEL_DELTA, true, m_bMouseOn, true);
+		}
+	} else if (bShift) {	// Pan horizontally
 		if (m_pCurrentImage != NULL) {
 			if (nDelta < 0) {
 				if (PerformPan(-PAN_STEP, 0, false) == true) {
@@ -1098,41 +1130,6 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 				}
 			}
 		}
-	} else {		// Pan vertically (if image is higher than window) OR go to previous/next image
-		if (m_pCurrentImage != NULL) {
-			if (nDelta < 0) {
-				if (m_bMangaMode == true) {
-					if (PerformPan(0, -PAN_STEP, false) == true) {
-						this->Invalidate(FALSE);
-					}
-				} else {
-					unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
-					if (iRealHeight > m_clientRect.Height()) {
-						if (PerformPan(0, -PAN_STEP, false) == true) {
-							this->Invalidate(FALSE);
-						}
-					} else {
-						GotoImage(POS_Next);
-					}
-				}
-			}
-			else if (nDelta > 0) {
-				if (m_bMangaMode == true) {
-					if (PerformPan(0, PAN_STEP, false) == true) {
-						this->Invalidate(FALSE);
-					}
-				} else {
-					unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
-					if (iRealHeight > m_clientRect.Height()) {
-						if (PerformPan(0, PAN_STEP, false) == true) {
-							this->Invalidate(FALSE);
-						}
-					} else {
-						GotoImage(POS_Previous);
-					}
-				}
-			}
-		}
 	}
 	return 0;
 }
@@ -1141,9 +1138,17 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 	bool bCtrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
 	bool bShift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
 	bool bAlt = (::GetKeyState(VK_MENU) & 0x8000) != 0;
-
+	if (m_pPanelMgr->OnKeyDown((unsigned int)wParam, bShift, bAlt, bCtrl)) {
+		return 1; // a panel has handled the key
+	}
+	bool bHandled = false;
 	if (wParam == VK_ESCAPE) {
-		if (m_bMovieMode) {
+		if (CloseHelpDlg()) {
+			bHandled = true;
+		} else if (m_pCropCtl->IsCropping()) {
+			bHandled = true;
+			m_pCropCtl->AbortCropping();
+		} else if (m_bMovieMode) {
 			StopMovieMode(); // stop any running movie/slideshow
 		} else if (m_bIsAnimationPlaying) {
 			StopAnimation(); // stop any running animation
@@ -1157,384 +1162,41 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			SaveBookmark();
 			CleanupAndTerminate();
 		}
-	} else if (wParam == VK_DELETE) {
-		DeleteImageShown();
-	} else if (wParam == VK_PAGE_UP) {
-		if (PerformPan(0,+(m_clientRect.Height()),false) == true)
-			this->Invalidate(FALSE);
-	} else if (wParam == VK_PAGE_DOWN) {
-		if (PerformPan(0,-(m_clientRect.Height()),false) == true)
-			this->Invalidate(FALSE);
-	} else if (wParam == VK_SPACE) {
+	} else if (!bCtrl && wParam != VK_ESCAPE && m_nLastLoadError == HelpersGUI::FileLoad_NoFilesInDirectory && !m_sStartupFile.IsEmpty()) {
+		// search in subfolders if initial directory has no images
+		bHandled = true;
+		m_pFileList->SetNavigationMode(Helpers::NM_LoopSubDirectories);
 		GotoImage(POS_Next);
-	} else if (wParam == VK_BACK) {
-		GotoImage(POS_Previous);
-	} else if (wParam == VK_HOME) {
-		GotoImage(POS_First);
-	} else if (wParam == VK_END) {
-		GotoImage(POS_Last);
-	} else if (wParam == VK_PLUS) {
-		PerformZoom(1, false, m_bMouseOn, false);
-	} else if (wParam == VK_MINUS) {
-		PerformZoom(-1, false, m_bMouseOn, false);
-	} else if (wParam == VK_RETURN) {
-		ExecuteCommand(IDM_FULL_SCREEN_MODE);
-	} else if (wParam == VK_UP || wParam == VK_DOWN || wParam == VK_LEFT || wParam == VK_RIGHT) {
-		if (lParam & 0xc0000000)
-			return 1;
-
-		if (m_pCurrentImage != NULL) {
-			INT iRealHeight = INT (m_dZoom * (m_pCurrentImage->OrigHeight()));
-			INT iRealWidth = INT (m_dZoom * (m_pCurrentImage->OrigWidth()));
-
-			if (((iRealHeight > m_clientRect.Height()) && (wParam == VK_UP || wParam == VK_DOWN)) || ((iRealWidth > m_clientRect.Width()) && (wParam == VK_LEFT || wParam == VK_RIGHT))) {
-				//* Debugging */	::OutputDebugStringW(TEXT("Here!!"));
-				
-				if (m_bPanTimerActive == false) {
-					m_bPanTimerActive = true;
-					::SetTimer(this->m_hWnd, PAN_TIMER_EVENT_ID, 10, NULL);
-				}
-			} else {
-				if (m_bMangaMode == false) {
-					if (wParam == VK_RIGHT)
-						GotoImage(POS_Next);
-					else if (wParam == VK_LEFT)
-						GotoImage(POS_Previous);
-				} else {
-					if (iRealHeight > m_clientRect.Height()) {
-						if (m_bPanTimerActive == false) {
-							if ((m_offsets.y >= ((iRealHeight-m_clientRect.Height())/2)) && (wParam == VK_LEFT))	// Upper Border!
-								GotoImage(POS_Previous);
-							else if ((-m_offsets.y >= ((iRealHeight-m_clientRect.Height())/2)) && (wParam == VK_RIGHT))	//Lower Border!
-								GotoImage(POS_Next);
-							else {
-								m_bPanTimerActive = true;
-								::SetTimer(this->m_hWnd, PAN_TIMER_EVENT_ID, 10, NULL);
-							}
-						}
-					} else {
-						if (m_bPanTimerActive == false) {
-							if (wParam == VK_RIGHT)
-								GotoImage(POS_Next);
-							else if (wParam == VK_LEFT)
-								GotoImage(POS_Previous);
-						}
-					}
-				}
-			}
-
-			return 1;
+	} else if (wParam >= '1' && wParam <= '9' && (!bShift || bCtrl)) {
+		// Start the slideshow
+		bHandled = true;
+		int nValue = (int)wParam - '1' + 1;
+		if (bCtrl && bShift) {
+			nValue *= 10; // 1/100 seconds
+		} else if (bCtrl) {
+			nValue *= 100; // 1/10 seconds
+		} else {
+			nValue *= 1000; // seconds
 		}
+		StartMovieMode(1000.0/nValue);
 	} else if (wParam == VK_F1) {
-		m_bShowInfo = false;
-
-		if (m_bShowHelp == false)
-			m_bShowHelp = true;
-		else
-			m_bShowHelp = false;
-
-		this->Invalidate(FALSE);
-	} else if (wParam == VK_F5) {
-		if (m_pFileList != NULL && m_pFileList->CurrentFileExists()) {
-			m_pFileList->Reload(NULL);
-			this->Invalidate(FALSE);
-		}
-
-		if (m_pCurrentImage != NULL)
-			GotoImage(POS_Current);
-	} else if (wParam == '1') {
-		if (m_dZoom != 0.5) {
-			m_dZoom = 0.5;
-			m_bInZooming = true;
-			StartLowQTimer(ZOOM_TIMEOUT);
-		}
-
-		this->Invalidate(FALSE);		// will cause an OnPaint() in which the offsets and zoom are recalculated before repainting
-	} else if (wParam == '2') {
-		if (m_dZoom != 0.25) {
-			m_dZoom = 0.25;
-			m_bInZooming = true;
-			StartLowQTimer(ZOOM_TIMEOUT);
-		}
-
-		this->Invalidate(FALSE);		// will cause an OnPaint() in which the offsets and zoom are recalculated before repainting
-	} else if (wParam == 'A') {
-		LPCTSTR sCurrentFileName = CurrentFileName(false);
-		if (sCurrentFileName != NULL) {
-			TCHAR sFullPath[MAX_PATH];
-			lstrcpy(sFullPath,sCurrentFileName);
-			
-			TCHAR sFNameNoExt[MAX_PATH];
-			_wsplitpath(sFullPath,NULL,NULL,sFNameNoExt,NULL);
-
-			TCHAR sParentDir[MAX_PATH];
-			lstrcpy(sParentDir,sFullPath);
-			PathRemoveFileSpec(sParentDir);
-
-			TCHAR sParentDir2[MAX_PATH];
-			lstrcpy(sParentDir2,sParentDir);
-			PathRemoveFileSpec(sParentDir2);
-
-			TCHAR sParentDirName[MAX_PATH];
-			lstrcpy(sParentDirName,sParentDir);
-			PathStripPath(sParentDirName);
-
-			TCHAR sTestFile[MAX_PATH] = TEXT("");
-			TCHAR sTestPath[MAX_PATH] = TEXT("");
-			TCHAR sTargetFile[MAX_PATH] = TEXT("");
-			BOOL bMatchFound=FALSE;
-
-			std::wstring wexpr = TEXT("^(.+)\\s+\\[(en|de|ch|ko)\\]$");
-			std::wregex we(wexpr);
-			std::wsmatch wsMatch;
-			std::wstring wtest = sParentDirName;
-			if(std::regex_search(wtest, wsMatch, we)) {
-				// wsMatch.str(1).c_str()	contains the release title without language tag
-				// wsMatch.str(2).c_str()	contains the language tag without brackets
-				
-				
-				if (lstrcmpi(wsMatch.str(2).c_str(),TEXT("en")) == 0) {
-					//::OutputDebugStringW(TEXT("A1a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [de]"),sParentDir2,wsMatch.str(1).c_str());
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("A1b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-
-				if ((bMatchFound==FALSE) || (lstrcmpi(wsMatch.str(2).c_str(),TEXT("de")) == 0)) {
-					//::OutputDebugStringW(TEXT("A2a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [ch]"),sParentDir2,wsMatch.str(1).c_str());
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("A2b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-
-				if ((bMatchFound==FALSE) || (lstrcmpi(wsMatch.str(2).c_str(),TEXT("ch")) == 0)) {
-					//::OutputDebugStringW(TEXT("A3a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [ko]"),sParentDir2,wsMatch.str(1).c_str());
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("A3b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-
-				if ((bMatchFound==FALSE) || (lstrcmpi(wsMatch.str(2).c_str(),TEXT("ko")) == 0)) {
-					//::OutputDebugStringW(TEXT("A4a"));
-					wsprintf(sTestPath,TEXT("%s\\%s"),sParentDir2,wsMatch.str(1).c_str());
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("A4b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-
-				if (bMatchFound==FALSE) {
-					//::OutputDebugStringW(TEXT("A5a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [en]"),sParentDir2,wsMatch.str(1).c_str());
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("A5b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-			} else {
-				//::OutputDebugStringW(TEXT("B1a"));
-				wsprintf(sTestPath,TEXT("%s\\%s [en]"),sParentDir2,sParentDirName);
-				if (::PathFileExists(sTestPath)) {
-					//::OutputDebugStringW(TEXT("B1b"));
-					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-					bMatchFound = TRUE;
-				}
-				
-				if (bMatchFound==FALSE) {
-					//::OutputDebugStringW(TEXT("B2a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [de]"),sParentDir2,sParentDirName);
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("B2b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-
-				if (bMatchFound==FALSE) {
-					//::OutputDebugStringW(TEXT("B3a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [ch]"),sParentDir2,sParentDirName);
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("B3b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-
-				if (bMatchFound==FALSE) {
-					//::OutputDebugStringW(TEXT("B4a"));
-					wsprintf(sTestPath,TEXT("%s\\%s [ko]"),sParentDir2,sParentDirName);
-					if (::PathFileExists(sTestPath)) {
-						//::OutputDebugStringW(TEXT("B4b"));
-						wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
-						bMatchFound = TRUE;
-					}
-				}
-			}
-
-			if (bMatchFound==TRUE) {
-				//::OutputDebugStringW(TEXT("C1"));
-
-				wsprintf(sTargetFile,TEXT("%s.jpg"),sTestFile);
-				if (::PathFileExists(sTargetFile)) {
-					OpenFile(sTargetFile,false);
-				} else {
-					wsprintf(sTargetFile,TEXT("%s.png"),sTestFile);
-					if (::PathFileExists(sTargetFile)) {
-						OpenFile(sTargetFile,false);
-					} else {
-						wsprintf(sTargetFile,TEXT("%s.jpeg"),sTestFile);
-						if (::PathFileExists(sTargetFile)) {
-							OpenFile(sTargetFile,false);
-						} else {
-							wsprintf(sTargetFile,TEXT("%s.bmp"),sTestFile);
-							if (::PathFileExists(sTargetFile))
-								OpenFile(sTargetFile,false);
-						}
-					}
-				}
-			}
-		}
-	} else if (bCtrl && wParam == 'C') {
-		ExecuteCommand(IDM_COPY_FULL);
-	} else if (bCtrl && wParam == 'E') {
-		LPCTSTR sCurrentFileName = CurrentFileName(false);
-		if (sCurrentFileName != NULL) {
-			if (m_bFullScreenMode) {
-				m_bFullScreenMode = !m_bFullScreenMode;
-				CRect windowRect;
-				this->SetWindowLongW(GWL_STYLE, this->GetWindowLongW(GWL_STYLE) | WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-				if (::IsRectEmpty(&(m_storedWindowPlacement2.rcNormalPosition))) {
-					// never set to window mode before, use default position
-					windowRect = CMultiMonitorSupport::GetDefaultWindowRect();
-					this->SetWindowPos(HWND_TOP, windowRect.left, windowRect.top, windowRect.Width(), windowRect.Height(), SWP_NOZORDER | SWP_NOCOPYBITS);
-				} else {
-					m_storedWindowPlacement2.flags = this->SetWindowPlacement(&m_storedWindowPlacement2);
-				}
-				this->MouseOn();
-
-				m_dZoom = -1;
-				m_bInZooming = true;
-				StartLowQTimer(ZOOM_TIMEOUT);
-				this->SetWindowPos(NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
-			}
-			::ShellExecute(m_hWnd,_T("edit"),sCurrentFileName,NULL,NULL,SW_SHOW);
-		}
-	} else if (wParam == 'F') {
-		double dOldZoom = m_dZoom;
-
-		m_bZoomMode = !m_bZoomMode;
-		m_dZoom = ConditionalZoomFactor();
-		
-		if ((m_offsets.x != 0) || (m_offsets.y != 0)) {
-			m_offsets_custom.x = m_offsets.x;
-			m_offsets_custom.y = m_offsets.y;
-			m_offsets = CPoint(0, 0);
-		} else if ((m_offsets_custom.x != 0) || (m_offsets_custom.y != 0)) {
-			m_offsets.x = m_offsets_custom.x;
-			m_offsets.y = m_offsets_custom.y;
-		}
-
-		if (abs(m_dZoom - dOldZoom) > 0) {
-			m_bInZooming = true;
-			StartLowQTimer(ZOOM_TIMEOUT);
-
-			this->Invalidate(FALSE);
-		}
-	} else if (wParam == 'H') {
-		ExecuteCommand(IDM_MIRROR_H);
-	} else if (wParam == 'I') {
-		m_bShowHelp = false;
-
-		if (m_bShowInfo == false)
-			m_bShowInfo = true;
-		else
-			m_bShowInfo = false;
-
-		this->Invalidate(FALSE);
-	} else if (wParam == 'L') {
-		if (bCtrl == true) {
-			LPCTSTR sCurrentFileName = CurrentFileName(false);
-			if (sCurrentFileName != NULL) {
-				if (m_bFullScreenMode) {
-					m_bFullScreenMode = !m_bFullScreenMode;
-					CRect windowRect;
-					this->SetWindowLongW(GWL_STYLE, this->GetWindowLongW(GWL_STYLE) | WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-					if (::IsRectEmpty(&(m_storedWindowPlacement2.rcNormalPosition))) {
-						// never set to window mode before, use default position
-						windowRect = CMultiMonitorSupport::GetDefaultWindowRect();
-						this->SetWindowPos(HWND_TOP, windowRect.left, windowRect.top, windowRect.Width(), windowRect.Height(), SWP_NOZORDER | SWP_NOCOPYBITS);
-					} else {
-						m_storedWindowPlacement2.flags = this->SetWindowPlacement(&m_storedWindowPlacement2);
-					}
-					this->MouseOn();
-
-					m_dZoom = -1;
-					m_bInZooming = true;
-					StartLowQTimer(ZOOM_TIMEOUT);
-					this->SetWindowPos(NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
-				}
-
-				TCHAR sParentDir[MAX_PATH];
-				lstrcpy(sParentDir,sCurrentFileName);
-				PathRemoveFileSpec(sParentDir);
-
-				TCHAR sFName[MAX_PATH];
-				lstrcpy(sFName,sCurrentFileName);
-				PathStripPath(sFName);
-
-				HWND hWnd_KeyLaunch;
-				hWnd_KeyLaunch = FindWindow(TEXT("AutoHotkey"),TEXT("GF_Hotkeys"));
-				if (hWnd_KeyLaunch != NULL) {
-					TCHAR StringToSend[MAX_PATH];
-					wsprintf(StringToSend,TEXT("ExplorerSwitch|%s|%s"),sParentDir,sFName);
-					COPYDATASTRUCT cds;
-					cds.cbData	= static_cast<DWORD>((wcslen(StringToSend) + 1) * sizeof(TCHAR));
-					cds.lpData	= StringToSend;
-					::SendMessage(hWnd_KeyLaunch,WM_COPYDATA,NULL,reinterpret_cast<LPARAM>(&cds));
-				} else {
-					ShellExecute(m_hWnd,_T("open"),sParentDir,NULL,NULL,SW_SHOWNORMAL);
-				}
-			}
-		} else {
-			ExecuteCommand(IDM_ROTATE_270);
-		}
-	} else if (wParam == 'M') {
-		ExecuteCommand(IDM_MINIMIZE);
-	} else if (wParam == 'R') {
-		ExecuteCommand(IDM_ROTATE_90);
-	} else if (wParam == 'S') {
-		if (m_bMovieMode) {
-			StopMovieMode();
-		} else {
-			StartMovieMode(m_dMovieFPS);
-		}
-	} else if (wParam == 'V') {
-		ExecuteCommand(IDM_MIRROR_V);
-		}
-	else if (wParam == 'Z') {
-		if (m_pFileList != NULL) {
-			if (m_pFileList->GetSorting() == Helpers::FS_FileName) {
-				m_pFileList->SetSorting(Helpers::FS_Random, m_pFileList->IsSortedAscending());
-			} else if (m_pFileList->GetSorting() == Helpers::FS_Random) {
-				m_pFileList->SetSorting(Helpers::FS_FileName, m_pFileList->IsSortedAscending());
-			}
-
-			m_pFileList->Reload(NULL);
-			this->Invalidate(FALSE);
+		bHandled = true;
+		ExecuteCommand(IDM_HELP);
+	} else {
+		int nCommand = m_pKeyMap->GetCommandIdForKey((int)wParam, bAlt, bCtrl, bShift);
+		if (nCommand > 0) {
+			bHandled = true;
+			ExecuteCommand(nCommand);
 		}
 	}
-	
+
+	if (!bHandled) {
+		// look if any of the user commands wants to handle this key
+		if (m_pFileList->Current() != NULL) {
+			HandleUserCommands(CKeyMap::GetCombinedKeyCode((int)wParam, bAlt, bCtrl, bShift));
+		}
+	}
+
 	return 1;
 }
 
@@ -2852,12 +2514,231 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 				SetDesktopWallpaper::SetProcessedImageAsWallpaper(*m_pCurrentImage);
 			}
 			break;
+		case IDM_CUSTOM_RANDOM_TOGGLE:
+			if (m_pFileList != NULL) {
+				if (m_pFileList->GetSorting() == Helpers::FS_FileName) {
+					m_pFileList->SetSorting(Helpers::FS_Random, m_pFileList->IsSortedAscending());
+				} else if (m_pFileList->GetSorting() == Helpers::FS_Random) {
+					m_pFileList->SetSorting(Helpers::FS_FileName, m_pFileList->IsSortedAscending());
+				}
+
+				m_pFileList->Reload(NULL);
+				this->Invalidate(FALSE);
+			}
+			break;
+		case IDM_CUSTOM_FIT_TOGGLE:
+		/*
+			double dOldZoom = m_dZoom;
+			m_bZoomMode = !m_bZoomMode;
+			m_dZoom = ConditionalZoomFactor();
+			
+			if ((m_offsets.x != 0) || (m_offsets.y != 0)) {
+				m_offsets_custom.x = m_offsets.x;
+				m_offsets_custom.y = m_offsets.y;
+				m_offsets = CPoint(0, 0);
+			} else if ((m_offsets_custom.x != 0) || (m_offsets_custom.y != 0)) {
+				m_offsets.x = m_offsets_custom.x;
+				m_offsets.y = m_offsets_custom.y;
+			}
+
+			if (abs(m_dZoom - dOldZoom) > 0) {
+				m_bInZooming = true;
+				StartLowQTimer(ZOOM_TIMEOUT);
+				this->Invalidate(FALSE);
+			}
+		*/
+			break;
+		case IDM_CUSTOM_OVERLAY_TOGGLE:
+			m_bShowHelp = false;
+			m_bShowInfo = !m_bShowInfo;
+			this->Invalidate(FALSE);
+			break;
+		case IDM_CUSTOM_LANGUAGE_SWITCH:
+			ToggleBookLanguage();
+			break;
+		case IDM_CUSTOM_EDIT_ACTION:
+			EditFileInDefaultExternalApplication();
+			break;
 	}
 	if (nCommand >= IDM_FIRST_USER_CMD && nCommand <= IDM_LAST_USER_CMD) {
 		ExecuteUserCommand(HelpersGUI::FindUserCommand(nCommand - IDM_FIRST_USER_CMD));
 	}
 	if (nCommand >= IDM_FIRST_OPENWITH_CMD && nCommand <= IDM_LAST_OPENWITH_CMD) {
 		ExecuteUserCommand(HelpersGUI::FindOpenWithCommand(nCommand - IDM_FIRST_OPENWITH_CMD));
+	}
+}
+
+void CMainDlg::ToggleBookLanguage() {
+	LPCTSTR sCurrentFileName = CurrentFileName(false);
+	if (sCurrentFileName != NULL) {
+		TCHAR sFullPath[MAX_PATH];
+		lstrcpy(sFullPath,sCurrentFileName);
+		
+		TCHAR sFNameNoExt[MAX_PATH];
+		_wsplitpath(sFullPath,NULL,NULL,sFNameNoExt,NULL);
+
+		TCHAR sParentDir[MAX_PATH];
+		lstrcpy(sParentDir,sFullPath);
+		PathRemoveFileSpec(sParentDir);
+
+		TCHAR sParentDir2[MAX_PATH];
+		lstrcpy(sParentDir2,sParentDir);
+		PathRemoveFileSpec(sParentDir2);
+
+		TCHAR sParentDirName[MAX_PATH];
+		lstrcpy(sParentDirName,sParentDir);
+		PathStripPath(sParentDirName);
+
+		TCHAR sTestFile[MAX_PATH] = TEXT("");
+		TCHAR sTestPath[MAX_PATH] = TEXT("");
+		TCHAR sTargetFile[MAX_PATH] = TEXT("");
+		BOOL bMatchFound=FALSE;
+
+		std::wstring wexpr = TEXT("^(.+)\\s+\\[(en|de|ch|ko)\\]$");
+		std::wregex we(wexpr);
+		std::wsmatch wsMatch;
+		std::wstring wtest = sParentDirName;
+		if(std::regex_search(wtest, wsMatch, we)) {
+			// wsMatch.str(1).c_str()	contains the release title without language tag
+			// wsMatch.str(2).c_str()	contains the language tag without brackets
+			
+			
+			if (lstrcmpi(wsMatch.str(2).c_str(),TEXT("en")) == 0) {
+				//::OutputDebugStringW(TEXT("A1a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [de]"),sParentDir2,wsMatch.str(1).c_str());
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("A1b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+
+			if ((bMatchFound==FALSE) || (lstrcmpi(wsMatch.str(2).c_str(),TEXT("de")) == 0)) {
+				//::OutputDebugStringW(TEXT("A2a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [ch]"),sParentDir2,wsMatch.str(1).c_str());
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("A2b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+
+			if ((bMatchFound==FALSE) || (lstrcmpi(wsMatch.str(2).c_str(),TEXT("ch")) == 0)) {
+				//::OutputDebugStringW(TEXT("A3a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [ko]"),sParentDir2,wsMatch.str(1).c_str());
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("A3b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+
+			if ((bMatchFound==FALSE) || (lstrcmpi(wsMatch.str(2).c_str(),TEXT("ko")) == 0)) {
+				//::OutputDebugStringW(TEXT("A4a"));
+				wsprintf(sTestPath,TEXT("%s\\%s"),sParentDir2,wsMatch.str(1).c_str());
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("A4b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+
+			if (bMatchFound==FALSE) {
+				//::OutputDebugStringW(TEXT("A5a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [en]"),sParentDir2,wsMatch.str(1).c_str());
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("A5b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+		} else {
+			//::OutputDebugStringW(TEXT("B1a"));
+			wsprintf(sTestPath,TEXT("%s\\%s [en]"),sParentDir2,sParentDirName);
+			if (::PathFileExists(sTestPath)) {
+				//::OutputDebugStringW(TEXT("B1b"));
+				wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+				bMatchFound = TRUE;
+			}
+			
+			if (bMatchFound==FALSE) {
+				//::OutputDebugStringW(TEXT("B2a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [de]"),sParentDir2,sParentDirName);
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("B2b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+
+			if (bMatchFound==FALSE) {
+				//::OutputDebugStringW(TEXT("B3a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [ch]"),sParentDir2,sParentDirName);
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("B3b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+
+			if (bMatchFound==FALSE) {
+				//::OutputDebugStringW(TEXT("B4a"));
+				wsprintf(sTestPath,TEXT("%s\\%s [ko]"),sParentDir2,sParentDirName);
+				if (::PathFileExists(sTestPath)) {
+					//::OutputDebugStringW(TEXT("B4b"));
+					wsprintf(sTestFile,TEXT("%s\\%s"),sTestPath,sFNameNoExt);
+					bMatchFound = TRUE;
+				}
+			}
+		}
+
+		if (bMatchFound==TRUE) {
+			//::OutputDebugStringW(TEXT("C1"));
+
+			wsprintf(sTargetFile,TEXT("%s.jpg"),sTestFile);
+			if (::PathFileExists(sTargetFile)) {
+				OpenFile(sTargetFile,false);
+			} else {
+				wsprintf(sTargetFile,TEXT("%s.png"),sTestFile);
+				if (::PathFileExists(sTargetFile)) {
+					OpenFile(sTargetFile,false);
+				} else {
+					wsprintf(sTargetFile,TEXT("%s.jpeg"),sTestFile);
+					if (::PathFileExists(sTargetFile)) {
+						OpenFile(sTargetFile,false);
+					} else {
+						wsprintf(sTargetFile,TEXT("%s.bmp"),sTestFile);
+						if (::PathFileExists(sTargetFile))
+							OpenFile(sTargetFile,false);
+					}
+				}
+			}
+		}
+	}
+}
+
+void CMainDlg::EditFileInDefaultExternalApplication() {
+	LPCTSTR sCurrentFileName = CurrentFileName(false);
+	if (sCurrentFileName != NULL) {
+		if (m_bFullScreenMode) {
+			m_bFullScreenMode = !m_bFullScreenMode;
+			CRect windowRect;
+			this->SetWindowLongW(GWL_STYLE, this->GetWindowLongW(GWL_STYLE) | WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+			if (::IsRectEmpty(&(m_storedWindowPlacement2.rcNormalPosition))) {
+				// never set to window mode before, use default position
+				windowRect = CMultiMonitorSupport::GetDefaultWindowRect();
+				this->SetWindowPos(HWND_TOP, windowRect.left, windowRect.top, windowRect.Width(), windowRect.Height(), SWP_NOZORDER | SWP_NOCOPYBITS);
+			} else {
+				m_storedWindowPlacement2.flags = this->SetWindowPlacement(&m_storedWindowPlacement2);
+			}
+			this->MouseOn();
+
+			m_dZoom = -1;
+			m_bInZooming = true;
+			StartLowQTimer(ZOOM_TIMEOUT);
+			this->SetWindowPos(NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
+		}
+		::ShellExecute(m_hWnd,_T("edit"),sCurrentFileName,NULL,NULL,SW_SHOW);
 	}
 }
 
@@ -3324,122 +3205,132 @@ void CMainDlg::AdjustSharpen(double dInc) {
 
 // returns true on success, false if nothing was done
 bool CMainDlg::PerformZoom(double dValue, bool bExponent, bool bZoomToMouse, bool bAdjustWindowToImage) {
+	double dOldZoom = m_dZoom;
+	m_bUserZoom = true;
+	m_isUserFitToScreen = false;
+	if (bExponent) {
+		m_dZoom = m_dZoom * pow(m_dZoomMult, dValue);
+	} else {
+		m_dZoom = dValue;
+	}
+
 	if (m_pCurrentImage == NULL) {
+		m_dZoom = max(Helpers::ZoomMin, min(Helpers::ZoomMax, m_dZoom));
 		return true;
 	}
 
-	double dRelative = 0.0;
 	double dZoomWindow = 0.0;
-//* Debugging */	TCHAR debugtext[512];
-
-	double dOldZoom = m_dZoom;
-	m_dZoom = m_dZoom * pow(1.1, dValue);	// dValue is almost always 1. Therefore, this usually does (m_dZoom*1.1)
-	
-	dRelative = (m_dZoom/1.0);
-	if (dRelative < 1.0)
+	double dRelative = (m_dZoom/1.0);
+	if (dRelative < 1.0) {
 		dRelative = 1/dRelative;
+	}
 
-//* Debugging */	swprintf(debugtext,255,TEXT("old: %f  new: %f  rel_1: %f"), dOldZoom, m_dZoom, dRelative);
-//* Debugging */	::OutputDebugStringW(debugtext);
+	/* Debugging */	TCHAR debugtext[512];
+	/* Debugging */	swprintf(debugtext,255,TEXT("PerformZoom(double dValue=%f, bool bExponent=%d, bool bZoomToMouse=%d, bool bAdjustWindowToImage=%d)  m_dZoomMult: %f, dOldZoom: %f  m_dZoom: %f  dRelative: %f"), m_dZoomMult, dValue, bExponent, bZoomToMouse, bAdjustWindowToImage, dOldZoom, m_dZoom, dRelative);
+	/* Debugging */	::OutputDebugStringW(debugtext);
 
-	if (dRelative<1.05)		// Special case 1: Image zoomed size close to image real size -> Use real size
-		{
-//* Debugging */	::OutputDebugStringW(TEXT("Setting m_dZoom=1.0"));
-
+	if (dRelative<1.05) {	// Special case 1: Image zoomed size close to image real size -> Use real size
+		/* Debugging */	::OutputDebugStringW(TEXT("Image zoomed size close to image real size -> Use real size -> Setting m_dZoom=1.0"));
 		m_dZoom = 1.0;
-		}
-	else
-		{
+	} else {
 		dZoomWindow = GetZoomFactorForFitToWindow();
 
 		dRelative = (m_dZoom/dZoomWindow);
-		if (dRelative < 1.0)
+		if (dRelative < 1.0) {
 			dRelative = 1/dRelative; 
+		}
+	
+		/* Debugging */	swprintf(debugtext,255,TEXT("old: %f  new: %f  rel_2: %f"), dOldZoom, m_dZoom, dRelative);
+		/* Debugging */	::OutputDebugStringW(debugtext);
 
-//* Debugging */	swprintf(debugtext,255,TEXT("old: %f  new: %f  rel_2: %f"), dOldZoom, m_dZoom, dRelative);
-//* Debugging */	::OutputDebugStringW(debugtext);
-
-		if (dRelative<1.05)		// Special case 2: Image zoomed size close to ZoomToWindow size -> Use ZoomToWindow size
-			{
-//* Debugging */	swprintf(debugtext,255,TEXT("Setting m_dZoom=dZoomWindow=%f)"), dZoomWindow);
-//* Debugging */	::OutputDebugStringW(debugtext);
-
+		if (dRelative<1.05) {	// Special case 2: Image zoomed size close to ZoomToWindow size -> Use ZoomToWindow size
+			/* Debugging */	swprintf(debugtext,255,TEXT("Image zoomed size close to ZoomToWindow size -> Use ZoomToWindow size -> Setting m_dZoom=dZoomWindow=%f)"), dZoomWindow);
+			/* Debugging */	::OutputDebugStringW(debugtext);
 			m_dZoom = dZoomWindow;
-			}
 		}
+	}
 
-	int nOldXSize = Helpers::RoundToInt(m_pCurrentImage->OrigWidth() * dOldZoom);
-	int nOldYSize = Helpers::RoundToInt(m_pCurrentImage->OrigHeight() * dOldZoom);
-	int nNewXSize = Helpers::RoundToInt(m_pCurrentImage->OrigWidth() * m_dZoom);
-	int nNewYSize = Helpers::RoundToInt(m_pCurrentImage->OrigHeight() * m_dZoom);
+	// Never create images more than 65535 pixels wide or high - the basic processing cannot handle it
+	int nOldXSize = (int)(m_pCurrentImage->OrigWidth() * dOldZoom + 0.5);
+	int nOldYSize = (int)(m_pCurrentImage->OrigHeight() * dOldZoom + 0.5);
+	int nNewXSize = (int)(m_pCurrentImage->OrigWidth() * m_dZoom + 0.5);
+	int nNewYSize = (int)(m_pCurrentImage->OrigHeight() * m_dZoom + 0.5);
 
-//* Debugging */	swprintf(debugtext,255,TEXT("nNewXSize=%d  nNewYSize=%d)"), nNewXSize, nNewYSize);
-//* Debugging */	::OutputDebugStringW(debugtext);
+	/* Debugging */	swprintf(debugtext,255,TEXT("nNewXSize=%d  nNewYSize=%d)"), nNewXSize, nNewYSize);
+	/* Debugging */	::OutputDebugStringW(debugtext);
 
-	if (nNewXSize > 65535 || nNewYSize > 65535)
-		{
-		// Never create images more than 65535 pixels wide or high - the basic processing cannot handle it
+	if (nNewXSize > 65535 || nNewYSize > 65535) {
+		double dFac = 65535.0/max(nNewXSize, nNewYSize);
+		m_dZoom = m_dZoom*dFac;
+		nNewXSize = (int)(m_pCurrentImage->OrigWidth() * m_dZoom + 0.5);
+		nNewYSize = (int)(m_pCurrentImage->OrigHeight() * m_dZoom + 0.5);
+	}
 
-		if (nNewXSize>=nNewYSize)
-			{
-			nNewXSize = 65535;
-			m_dZoom = ((double)nNewXSize / (double)(m_pCurrentImage->OrigWidth()));
-			nNewYSize = Helpers::RoundToInt(m_pCurrentImage->OrigHeight() * m_dZoom);
-			}
-		else
-			{
-			nNewYSize = 65535;
-			m_dZoom = ((double)nNewYSize / (double)(m_pCurrentImage->OrigHeight()));
-			nNewXSize = Helpers::RoundToInt(m_pCurrentImage->OrigWidth() * m_dZoom);
-			}
+#ifdef DEBUG
+	CString a; a.Format(_T("dZoom dOldZoom: %f %f\n"), m_dZoom, dOldZoom);
+	::OutputDebugString(a);
+#endif
+
+	// because we've increased/decreased to the maximum zoom allowed,
+	// only actually perform the zoom if the old and new dimensions differ
+	// the float arithmetic doesn't always come up with the same answer, but the new sizes can be directly compared
+	if (nNewXSize == nOldXSize && nNewYSize == nOldYSize) {
+		// because there's rounding errors, it is possible to get stuck zooming out from fractional zoom,
+		// due to the new/old size being the same, but the zoom factor still changing
+		// hence, only reset the zoom value IF when zooming out (aka, it is getting smaller)
+		//
+		// when zooming in, do not set the old zoom value so that it can "escape" the initial few steps where
+		// the zoom ratio has changed, but the size is still the same, due to rounding errors
+		if (bExponent && dValue < 0) {
+			// zooming out
+			// NOTE: this gets triggered on pauseAtZoom
+			m_dZoom = dOldZoom;  // restore previous zoom value
 		}
-	else if (nNewXSize < 1 || nNewYSize < 1)
-		{
-		m_dZoom = dOldZoom;
-		nNewXSize = nOldXSize;
-		nNewYSize = nOldYSize;
-		}
+		// zooming in does not require restoring the previous zoom value
+		// because the code which checks the 65535 will re-scale the zoom factor to ensure it never exceeds 65535
 
-	if (bZoomToMouse)
-		{
+		return false; // then do nothing
+	}
+
+
+	if (bZoomToMouse) {
 		// zoom to mouse
-		int nOldX = nOldXSize/2 - m_clientRect.Width()/2 + m_nMouseX - m_offsets.x;
-		int nOldY = nOldYSize/2 - m_clientRect.Height()/2 + m_nMouseY - m_offsets.y;
+		int nCenterX = m_bZoomMode ? m_nCapturedX : m_nMouseX;
+		int nCenterY = m_bZoomMode ? m_nCapturedY : m_nMouseY;
+		int nOldX = nOldXSize/2 - m_clientRect.Width()/2 + nCenterX - m_offsets.x;
+		int nOldY = nOldYSize/2 - m_clientRect.Height()/2 + nCenterY - m_offsets.y;
 		double dFac = m_dZoom/dOldZoom;
-		m_offsets.x = Helpers::RoundToInt(nNewXSize/2 - m_clientRect.Width()/2 + m_nMouseX - nOldX*dFac);
-		m_offsets.y = Helpers::RoundToInt(nNewYSize/2 - m_clientRect.Height()/2 + m_nMouseY - nOldY*dFac);
-		}
-	else
-		{
+		m_offsets.x = Helpers::RoundToInt(nNewXSize/2 - m_clientRect.Width()/2 + nCenterX - nOldX*dFac);
+		m_offsets.y = Helpers::RoundToInt(nNewYSize/2 - m_clientRect.Height()/2 + nCenterY - nOldY*dFac);
+	} else {
 		// zoom to center
 		m_offsets.x = Helpers::RoundToInt(m_offsets.x*m_dZoom/dOldZoom);
 		m_offsets.y = Helpers::RoundToInt(m_offsets.y*m_dZoom/dOldZoom);
-		}
+	}
 
-	if (fabs(dOldZoom - m_dZoom) > 0.0)
-		{
-		m_bInZooming = true;
-		StartLowQTimer(ZOOM_TIMEOUT);
+	m_bInZooming = true;
+	StartLowQTimer(ZOOM_TIMEOUT);
+	if (fabs(dOldZoom - m_dZoom) > 0.0001 || m_bZoomMode) {
 		this->Invalidate(FALSE);
-
-		if ((m_bMangaMode == true) && (m_bZoomMode == false))
-			{
+		InvalidateHelpDlg();
+		if (bAdjustWindowToImage) {
+			AdjustWindowToImage(false);
+		}
+		if ((m_bMangaMode == true) && (m_bZoomMode == false)) {
 			int nImageW = m_pCurrentImage->OrigWidth();
 			int nImageH = m_pCurrentImage->OrigHeight();
 			int nWinW = m_clientRect.Width();
 			int nWinH = m_clientRect.Height();
 		
 			double dImageAR = (double)nImageW/nImageH;
-			if (dImageAR < 1.0)		// single page
-				{
-				if (((nImageW * m_dZoom) <= nWinW) && ((nImageH * m_dZoom) >= nWinH))
-					{
+			if (dImageAR < 1.0) {		// single page
+				if (((nImageW * m_dZoom) <= nWinW) && ((nImageH * m_dZoom) >= nWinH)) {
 					m_nMangaSinglePageVisibleHeight = (int)((nWinH / (nImageH * m_dZoom)) * 100);
-					}
 				}
 			}
 		}
-	
+	}
+
 	return true;
 }
 
@@ -3525,12 +3416,16 @@ void CMainDlg::ResetZoomTo100Percents(bool bZoomToMouse) {
 	}
 }
 
-// CreateProcessParams() is called one time for each image and/or animation frame
-// It is only called as parameter in RequestImage() in OnInitDialog(), GotoImage() and OpenFile()
 CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool ToPreviousImage) {
 	int nClientWidth = m_clientRect.Width();
 	int nClientHeight = m_clientRect.Height();
+	if (nClientWidth == 0 && nClientHeight == 0) {
+		CRect rect = CMultiMonitorSupport::GetMonitorRect(m_hWnd);
+		nClientWidth = rect.Width();
+		nClientHeight = rect.Height();
+	}
 
+	// [GF] Fix m_offsets & m_bZoomMode for MangaMode
 	LPCTSTR sCurrentFileName = CurrentFileName(false);
 	if (sCurrentFileName != NULL) {
 		if ((StrStrI(sCurrentFileName,TEXT("\\manga\\"))) || (StrStrI(sCurrentFileName,TEXT("\\comics\\")))) {
@@ -3556,34 +3451,42 @@ CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool T
 	}
 
 	Helpers::EAutoZoomMode eAutoZoomMode = GetAutoZoomMode();
-	
-	m_bHQResampling = true;
-	m_nRotation = 0;
-	m_dZoom = -1;
-
-	// TargetWidth,TargetHeight is the dimension of the target output screen, the image is fit into this rectangle
-	// nRotation must be 0, 90, 270 degrees
-	// dZoom is the zoom factor compared to intial image size (1.0 means no zoom)
-	// offsets are relative to center of image and refer to original image size (not zoomed)
-	// CProcessParams(int nTargetWidth, int nTargetHeight, int nRotation, double dZoom, CPoint offsets, EProcessingFlags eProcFlags)
+	if (IsAdjustWindowToImage() && !bNoProcessingAfterLoad) {
+		CSize maxClientSize = Helpers::GetMaxClientSize(m_hWnd);
+		nClientWidth = maxClientSize.cx;
+		nClientHeight = maxClientSize.cy;
+		eAutoZoomMode = Helpers::ZM_FitToScreenNoZoom;
+	}
+	if (m_bKeepParams) {
+		double dOldLightenShadows = m_pImageProcParamsKept->LightenShadows;
+		*m_pImageProcParamsKept = *m_pImageProcParams;
+		// when last image was detected as sunset or nightshot, do not take this value for next image
+		if (m_bCurrentImageIsSpecialProcessing && m_pImageProcParams->LightenShadows == m_dCurrentInitialLightenShadows) {
+			m_pImageProcParamsKept->LightenShadows = dOldLightenShadows;
+		}
+		m_eProcessingFlagsKept = CreateProcessingFlags(m_bHQResampling, m_bAutoContrast, false, m_bLDC, m_bKeepParams, m_bLandscapeMode);
+		m_dZoomKept = (m_bUserZoom || IsAdjustWindowToImage()) ? m_dZoom : -1;
+		m_offsetKept = m_bUserPan ? m_offsets : CPoint(0, 0);
+		if (m_isUserFitToScreen && !IsAdjustWindowToImage()) { eAutoZoomMode = m_autoZoomFitToScreen; }
 
 		return CProcessParams(nClientWidth, nClientHeight,
-			0,			// nRotation
-			-1, 		// dZoom
-			m_offsets,	// CPoint offsets
-			PFLAG_HighQualityResampling);	// EProcessingFlags eProcFlags
-
-/*
+			CMultiMonitorSupport::GetMonitorRect(m_hWnd).Size(),
+			CRotationParams(0),
+			m_nUserRotation,
+			m_dZoomKept,
+			eAutoZoomMode,
+			m_offsetKept,
+			_SetLandscapeModeParams(m_bLandscapeMode, *m_pImageProcParamsKept), 
+			SetProcessingFlag(_SetLandscapeModeFlags(m_eProcessingFlagsKept), PFLAG_NoProcessingAfterLoad, bNoProcessingAfterLoad));
+	} else {
+		m_isUserFitToScreen = false;
+		CSettingsProvider& sp = CSettingsProvider::This();
 		return CProcessParams(nClientWidth, nClientHeight, 
-			CMultiMonitorSupport::GetMonitorRect(m_hWnd).Size(),	// CSize monitorSize
-			CRotationParams(0),										// CRotationParams& rotationParams
-			0,														// int nUserRotation
-			-1,														// double dZoom
-			eAutoZoomMode,											// Helpers::EAutoZoomMode eAutoZoomMode
-			CPoint(0, 0),											// CPoint offsets
-			_SetLandscapeModeParams(m_bLandscapeMode, GetDefaultProcessingParams()),	// CImageProcessingParams& imageProcParams
-			SetProcessingFlag(_SetLandscapeModeFlags(GetDefaultProcessingFlags(m_bLandscapeMode)), PFLAG_NoProcessingAfterLoad, bNoProcessingAfterLoad));	// EProcessingFlags eProcFlags
-*/
+			CMultiMonitorSupport::GetMonitorRect(m_hWnd).Size(),
+			CRotationParams(0), 0, -1, eAutoZoomMode, CPoint(0, 0),
+			_SetLandscapeModeParams(m_bLandscapeMode, GetDefaultProcessingParams()),
+			SetProcessingFlag(_SetLandscapeModeFlags(GetDefaultProcessingFlags(m_bLandscapeMode)), PFLAG_NoProcessingAfterLoad, bNoProcessingAfterLoad));
+	}
 }
 
 void CMainDlg::ResetParamsToDefault() {
@@ -3679,11 +3582,16 @@ void CMainDlg::StartLowQTimer(int nTimeout) {
 
 void CMainDlg::MouseOff() {
 	if (m_bMouseOn) {
-		if (m_bFullScreenMode) {
-			while (::ShowCursor(FALSE) >= 0);
+		if (m_nMouseY < m_clientRect.bottom - m_pImageProcPanelCtl->PanelRect().Height() && 
+			!m_bInTrackPopupMenu && !m_pNavPanelCtl->PanelRect().PtInRect(CPoint(m_nMouseX, m_nMouseY))) {
+			if (m_bFullScreenMode) {
+				// cursor only hides when in full screen mode
+				while (::ShowCursor(FALSE) >= 0);
 			}
-		m_startMouse.x = m_startMouse.y = -1;
-		m_bMouseOn = false;
+			m_startMouse.x = m_startMouse.y = -1;
+			m_bMouseOn = false;
+		}
+		this->InvalidateRect(m_pNavPanelCtl->PanelRect(), FALSE);
 	}
 }
 
@@ -3726,10 +3634,53 @@ void CMainDlg::ExchangeProcessingParams() {
 }
 
 void CMainDlg::AfterNewImageLoaded(bool bSynchronize, bool bAfterStartup, bool noAdjustWindow) {
-	if (m_pCurrentImage != NULL) {
-		UpdateWindowTitle(false);
-		m_bHQResampling = true;
-		m_pDirectoryWatcher->SetCurrentFile(CurrentFileName(false));
+	UpdateWindowTitle(false);
+	InvalidateHelpDlg();
+	m_pDirectoryWatcher->SetCurrentFile(CurrentFileName(false));
+	if (!m_bIsAnimationPlaying) m_pNavPanelCtl->HideNavPanelTemporary();
+	m_pPanelMgr->AfterNewImageLoaded();
+	m_pCropCtl->AbortCropping();
+	if (m_pCurrentImage != NULL) m_pCropCtl->SetImageSize(m_pCurrentImage->OrigSize()); // inform CropCtl of the image size for CropImageAR
+	m_pPrintImage->ClearOffsets();
+	if (bSynchronize) {
+		// after loading an image, the per image processing parameters must be synchronized with
+		// the current processing parameters
+		bool bLastWasSpecialProcessing = m_bCurrentImageIsSpecialProcessing;
+		bool bLastWasInParamDB = m_bCurrentImageInParamDB;
+		m_bCurrentImageInParamDB = false;
+		m_bCurrentImageIsSpecialProcessing = false;
+		if (m_pCurrentImage != NULL) {
+			m_dCurrentInitialLightenShadows = m_pCurrentImage->GetInitialProcessParams().LightenShadows;
+			m_bCurrentImageInParamDB = m_pCurrentImage->IsInParamDB();
+			m_bCurrentImageIsSpecialProcessing = m_pCurrentImage->GetLightenShadowFactor() != 1.0f;
+			if (!m_bKeepParams) {
+				m_bHQResampling = GetProcessingFlag(m_pCurrentImage->GetInitialProcessFlags(), PFLAG_HighQualityResampling);
+				m_bAutoContrast = GetProcessingFlag(m_pCurrentImage->GetInitialProcessFlags(), PFLAG_AutoContrast);
+				m_bLDC = GetProcessingFlag(m_pCurrentImage->GetInitialProcessFlags(), PFLAG_LDC);
+
+				m_nRotation = m_pCurrentImage->GetInitialRotation();
+				m_dZoom = m_pCurrentImage->GetInititialZoom();
+				m_offsets = m_pCurrentImage->GetInitialOffsets();
+
+				if (m_pCurrentImage->HasZoomStoredInParamDB()) {
+					m_bUserZoom = m_bUserPan = true;
+				}
+
+				*m_pImageProcParams = m_pCurrentImage->GetInitialProcessParams();
+			} else if (m_bCurrentImageIsSpecialProcessing && m_bKeepParams) {
+				// set this factor, no matter if we keep parameters
+				m_pImageProcParams->LightenShadows = m_pCurrentImage->GetInitialProcessParams().LightenShadows;
+			} else if (bLastWasSpecialProcessing && m_bKeepParams) {
+				// take kept value when last was special processing as the special processing value is not usable
+				m_pImageProcParams->LightenShadows = m_pImageProcParamsKept->LightenShadows;
+			}
+			if (m_bKeepParams) {
+				m_nRotation = m_pCurrentImage->GetInitialRotation() + m_nUserRotation;
+			}
+		}
+		if (!bAfterStartup && !m_bIsAnimationPlaying && !noAdjustWindow) {
+			AdjustWindowToImage(false);
+		}
 	}
 }
 
@@ -3926,12 +3877,6 @@ void CMainDlg::EditINIFile(bool bGlobalINI) {
 }
 
 void CMainDlg::UpdateWindowTitle(bool bForce) {
-	HICON hIconBigPrevious = NULL;
-	HICON hIconSmallPrevious = NULL;
-	HICON hIconBig = NULL;
-	HICON hIconSmall = NULL;
-	SHFILEINFO shfi;
-
 	bool bShowFullPathInTitle  = CSettingsProvider::This().ShowFullPathInTitle();
 	LPCTSTR sCurrentFileName = CurrentFileName(!bShowFullPathInTitle);
 
@@ -3939,23 +3884,6 @@ void CMainDlg::UpdateWindowTitle(bool bForce) {
 		if ((lstrcmpi(_T(JPEGVIEW_TITLE),s_PrevTitleText) != 0) || (bForce == true)) {
 			_stprintf_s(s_PrevTitleText, MAX_PATH, _T("%s"),_T(JPEGVIEW_TITLE));
 			this->SetWindowText(_T(JPEGVIEW_TITLE));
-		}
-
-		if (CSettingsProvider::This().TitleBarUseFileIcon()) {
-			hIconBig = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXICON),::GetSystemMetrics(SM_CYICON),LR_VGACOLOR);
-			if (hIconBig != NULL) {
-				hIconBigPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_BIG,(LPARAM)hIconBig);
-				if (hIconBigPrevious != NULL)
-					DestroyIcon(hIconBigPrevious);
-			}
-
-
-			hIconSmall = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXSMICON),::GetSystemMetrics(SM_CYSMICON),LR_VGACOLOR);
-			if (hIconSmall != NULL) {
-				hIconSmallPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIconSmall);
-				if (hIconSmallPrevious != NULL)
-					DestroyIcon(hIconSmallPrevious);
-			}
 		}
 	} else {
 		CString sWindowText =  sCurrentFileName;
@@ -3974,8 +3902,32 @@ void CMainDlg::UpdateWindowTitle(bool bForce) {
 			_stprintf_s(s_PrevTitleText, MAX_PATH, _T("%s"),sWindowText);
 			this->SetWindowText(sWindowText);
 		}
+	}
 
-		if (CSettingsProvider::This().TitleBarUseFileIcon()) {
+// [GF] Update title bar icon
+	if (CSettingsProvider::This().TitleBarUseFileIcon()) {
+		HICON hIconBigPrevious = NULL;
+		HICON hIconSmallPrevious = NULL;
+		HICON hIconBig = NULL;
+		HICON hIconSmall = NULL;
+		SHFILEINFO shfi;
+		
+		if (sCurrentFileName == NULL || m_pCurrentImage == NULL) {
+			hIconBig = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXICON),::GetSystemMetrics(SM_CYICON),LR_VGACOLOR);
+			if (hIconBig != NULL) {
+				hIconBigPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_BIG,(LPARAM)hIconBig);
+				if (hIconBigPrevious != NULL)
+					DestroyIcon(hIconBigPrevious);
+			}
+
+
+			hIconSmall = (HICON)::LoadImage(::GetModuleHandle(0),MAKEINTRESOURCE(IDR_MAINFRAME),IMAGE_ICON,::GetSystemMetrics(SM_CXSMICON),::GetSystemMetrics(SM_CYSMICON),LR_VGACOLOR);
+			if (hIconSmall != NULL) {
+				hIconSmallPrevious = (HICON)::SendMessage(CMainDlg::m_hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIconSmall);
+				if (hIconSmallPrevious != NULL)
+					DestroyIcon(hIconSmallPrevious);
+			}
+		} else {
 			LPCTSTR sCurrentFilePath = CurrentFileName(false);
 			TCHAR *pExt = NULL;								// TCHAR = WCHAR on unicode
 			pExt = PathFindExtension(sCurrentFilePath);		// input: PTSTR, output: PTSTR
@@ -4499,57 +4451,6 @@ double CMainDlg::ConditionalZoomFactor() {
 	return dZoom;
 	}
 
-void CMainDlg::DeleteImageShown() {
-	TCHAR sFileToDelete[MAX_PATH];
-	lstrcpy(sFileToDelete,CurrentFileName(false));	// "CurrentFileName(false)" returns the full path to the presently shown file, not only its name!
-
-	if (::PathFileExists(sFileToDelete)) {
-		MouseOn();
-
-		TCHAR sParentDir[MAX_PATH];
-		lstrcpy(sParentDir,sFileToDelete);
-		PathRemoveFileSpec(sParentDir);
-
-		TCHAR sParentDirName[MAX_PATH];
-		lstrcpy(sParentDirName,sParentDir);
-		PathStripPath(sParentDirName);
-
-		TCHAR sFName[MAX_PATH];
-		lstrcpy(sFName,sFileToDelete);
-		PathStripPath(sFName);
-
-		TCHAR tempstr[1024];
-		wsprintf(tempstr,TEXT("Do you really want to delete this file permanently?\n\n%s\\%s"),sParentDirName,sFName);
-		if ((::MessageBox(CMainDlg::m_hWnd,tempstr,TEXT("Delete File"), MB_YESNO | MB_ICONQUESTION | MB_TASKMODAL)) == IDYES) {
-			if (::PathFileExists(sFileToDelete)) {
-				if (m_pFileList->Size() == 1) {
-					StopMovieMode();
-					StopAnimation();
-					
-					// m_pJPEGProvider is instance of "CJPEGProvider" class that reads and processes JPEG files using read ahead with own threads
-					delete m_pJPEGProvider; // delete this early to properly shut down the loading threads
-					m_pJPEGProvider = NULL;
-
-					DeleteFile(sFileToDelete);
-					EndDialog(0);
-				} else {
-					GotoImage(POS_Next);
-					//LPCTSTR sCurrentFileName = m_pFileList->Current();
-					//m_pFileList->Reload(sCurrentFileName, true);
-					m_pFileList->ListFileDelete(sFileToDelete);
-					Sleep(100);	// hopefully the JPEGProvider timers have ended by now and the file can be write-accessed again
-					DeleteFile(sFileToDelete);
-				}
-			}
-		}
-		MouseOff();
-	} else {
-		GotoImage(POS_Next);
-		m_pFileList->Reload(m_pFileList->Current());
-	}
-
-	return;
-}
 void CMainDlg::SaveBookmark()
 	{
 	TCHAR sCurrentFileName[MAX_PATH];

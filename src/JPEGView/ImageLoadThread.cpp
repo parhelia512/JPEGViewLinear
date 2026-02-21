@@ -14,8 +14,13 @@
 #include "PNGWrapper.h"
 #ifndef WINXP
 #include "JXLWrapper.h"
+#include "HEIFWrapper.h"
+#include "AVIFWrapper.h"
+#include "RAWWrapper.h"
 #endif
 #include "WEBPWrapper.h"
+#include "QOIWrapper.h"
+#include "PSDWrapper.h"
 #include "MaxImageDef.h"
 
 
@@ -190,7 +195,6 @@ static CJPEGImage* ConvertGDIPlusBitmapToJPEGImage(Gdiplus::Bitmap* pBitmap, int
 	lastStatus = pBitmapToUse->LockBits(&bmRect, Gdiplus::ImageLockModeRead, PixelFormat32bppRGB, &bmData);
 	if (lastStatus == Gdiplus::Ok) {
 		assert(bmData.PixelFormat == PixelFormat32bppRGB);
-		// Convert from GDI+ 32 bpp RGBA format to 32 bpp BGRA format
 		void* pDIB = CBasicProcessing::ConvertGdiplus32bppRGB(bmRect.Width, bmRect.Height, bmData.Stride, bmData.Scan0);
 		if (pDIB != NULL) {
 			pJPEGImage = new CJPEGImage(bmRect.Width, bmRect.Height, pDIB, pEXIFData, 4, nJPEGHash, eImageFormat,
@@ -224,9 +228,7 @@ CImageLoadThread::~CImageLoadThread(void) {
 	DeleteCachedWebpDecoder();
 	DeleteCachedPngDecoder();
 	DeleteCachedJxlDecoder();
-/*
 	DeleteCachedAvifDecoder();
-*/
 }
 
 int CImageLoadThread::AsyncLoad(LPCTSTR strFileName, int nFrameIndex, const CProcessParams & processParams, HWND targetWnd, HANDLE eventFinished) {
@@ -282,11 +284,9 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 		if (rq.FileName == m_sLastJxlFileName) {
 			DeleteCachedJxlDecoder();
 		}
-/*
 		if (rq.FileName == m_sLastAvifFileName) {
 			DeleteCachedAvifDecoder();
 		}
-*/
 		return;
 	}
 
@@ -299,7 +299,7 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 			DeleteCachedWebpDecoder();
 			DeleteCachedPngDecoder();
 			DeleteCachedJxlDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadJPEGRequest(&rq);
 			break;
 		case IF_WindowsBMP :
@@ -307,7 +307,7 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 			DeleteCachedWebpDecoder();
 			DeleteCachedPngDecoder();
 			DeleteCachedJxlDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadBMPRequest(&rq);
 			break;
 		case IF_TGA :
@@ -315,21 +315,21 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 			DeleteCachedWebpDecoder();
 			DeleteCachedPngDecoder();
 			DeleteCachedJxlDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadTGARequest(&rq);
 			break;
 		case IF_WEBP:
 			DeleteCachedGDIBitmap();
 			DeleteCachedPngDecoder();
 			DeleteCachedJxlDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadWEBPRequest(&rq);
 			break;
 		case IF_PNG:
 			DeleteCachedGDIBitmap();
 			DeleteCachedWebpDecoder();
 			DeleteCachedJxlDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadPNGRequest(&rq);
 			break;
 #ifndef WINXP
@@ -337,10 +337,9 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 			DeleteCachedGDIBitmap();
 			DeleteCachedWebpDecoder();
 			DeleteCachedPngDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadJXLRequest(&rq);
 			break;
-/*
 		case IF_AVIF:
 			DeleteCachedGDIBitmap();
 			DeleteCachedWebpDecoder();
@@ -372,9 +371,7 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 			DeleteCachedAvifDecoder();
 			ProcessReadRAWRequest(&rq);
 			break;
-*/
 #endif
-/*
 		case IF_QOI:
 			DeleteCachedGDIBitmap();
 			DeleteCachedWebpDecoder();
@@ -391,13 +388,12 @@ void CImageLoadThread::ProcessRequest(CRequestBase& request) {
 			DeleteCachedAvifDecoder();
 			ProcessReadWICRequest(&rq);
 			break;
-*/
 		default:
 			// try with GDI+
 			DeleteCachedWebpDecoder();
 			DeleteCachedPngDecoder();
 			DeleteCachedJxlDecoder();
-//			DeleteCachedAvifDecoder();
+			DeleteCachedAvifDecoder();
 			ProcessReadGDIPlusRequest(&rq);
 			break;
 	}
@@ -464,7 +460,7 @@ void CImageLoadThread::DeleteCachedJxlDecoder() {
 	m_sLastJxlFileName.Empty();
 #endif
 }
-/*
+
 void CImageLoadThread::DeleteCachedAvifDecoder() {
 #ifndef WINXP
 	// prevent crashing when libavif/dav1d fail or missing
@@ -476,7 +472,7 @@ void CImageLoadThread::DeleteCachedAvifDecoder() {
 	m_sLastAvifFileName.Empty();
 #endif
 }
-*/
+
 void CImageLoadThread::ProcessReadJPEGRequest(CRequest * request) {
 	HANDLE hFile = ::CreateFile(request->FileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
@@ -822,7 +818,7 @@ void CImageLoadThread::ProcessReadJXLRequest(CRequest* request) {
 	}
 }
 #endif
-/*
+
 #ifndef WINXP
 void CImageLoadThread::ProcessReadAVIFRequest(CRequest* request) {
 	bool bSuccess = false;
@@ -1047,7 +1043,7 @@ void CImageLoadThread::ProcessReadRAWRequest(CRequest * request) {
 		request->OutOfMemory = true;
 	}
 }
-*/
+
 void CImageLoadThread::ProcessReadGDIPlusRequest(CRequest * request) {
 	const wchar_t* sFileName;
 	sFileName = (const wchar_t*)request->FileName;
@@ -1078,7 +1074,7 @@ static void dealloc(unsigned char* buffer) {
 
 typedef unsigned char* Allocator(int sizeInBytes);
 typedef void Deallocator(unsigned char* buffer);
-/*
+
 __declspec(dllimport) unsigned char* __stdcall LoadImageWithWIC(LPCWSTR fileName, Allocator* allocator, Deallocator* deallocator,
 	unsigned int* width, unsigned int* height);
 
@@ -1096,17 +1092,16 @@ void CImageLoadThread::ProcessReadWICRequest(CRequest* request) {
 		// fatal error in WIC
 	}
 }
-*/
+
 bool CImageLoadThread::ProcessImageAfterLoad(CRequest * request) {
 	// set process parameters depending on filename
 	request->Image->SetFileDependentProcessParams(request->FileName, &(request->ProcessParams));
 
 	// First do rotation, this maybe modifies the width and height
-	if (!request->Image->VerifyRotation(request->ProcessParams.Rotation)) {
+	if (!request->Image->VerifyRotation(CRotationParams(request->ProcessParams.RotationParams, request->ProcessParams.RotationParams.Rotation + request->ProcessParams.UserRotation))) {
 		return false;
 	}
-return true;
-/*
+
 	// Do nothing (except rotation) if processing after load turned off
 	if (GetProcessingFlag(request->ProcessParams.ProcFlags, PFLAG_NoProcessingAfterLoad)) {
 		return true;
@@ -1137,5 +1132,4 @@ return true;
 	CPoint offsetInImage = request->Image->ConvertOffset(newSize, clippedSize, request->ProcessParams.Offsets);
 	return NULL != request->Image->GetDIB(newSize, clippedSize, offsetInImage,
 		request->ProcessParams.ImageProcParams, request->ProcessParams.ProcFlags);
-*/
 }

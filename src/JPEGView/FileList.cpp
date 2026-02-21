@@ -10,7 +10,7 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 // static initializers
-Helpers::ESorting CFileDesc::sm_eSorting = Helpers::FS_FileName;
+Helpers::ESorting CFileDesc::sm_eSorting = Helpers::FS_LastModTime;
 bool CFileDesc::sm_bSortAscending = true;
 Helpers::ENavigationMode CFileList::sm_eMode = Helpers::NM_LoopDirectory;
 
@@ -177,13 +177,12 @@ static LPCTSTR* GetSupportedFileEndingList() {
 		for (nNumEndings = 0; nNumEndings < cnNumEndingsInternal; nNumEndings++) {
 			sFileEndings[nNumEndings] = csFileEndingsInternal[nNumEndings];
 		}
-/*
+
 		LPCTSTR sFileEndingsWIC = CSettingsProvider::This().FilesProcessedByWIC();
 		if (_tcslen(sFileEndingsWIC) > 2 && WICPresentGuarded()) {
 			ParseAndAddFileEndings(sFileEndingsWIC);
 		}
 		ParseAndAddFileEndings(CSettingsProvider::This().FileEndingsRAW());
-*/
 	}
 	return sFileEndings;
 }
@@ -999,7 +998,10 @@ bool CFileList::TryReadingSlideShowList(const CString & sSlideShowFile) {
 	return true;
 }
 
-// Custom
+//#####################################################
+//# GF: Custom public functions of linear scaling mod #
+//#####################################################
+
 void CFileList::ListFileDelete(LPCTSTR sFileName) {
 	// Delete file out of list directly without checking all files' attributes
 

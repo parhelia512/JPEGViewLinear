@@ -149,7 +149,7 @@ public:
 	// nRotation must be 0, 90, 270 degrees, nUserRotation will be added to it
 	// dZoom is the zoom factor compared to initial image size (1.0 means no zoom)
 	// offsets are relative to center of image and refer to original image size (not zoomed)
-/*
+
 	CProcessParams(int nTargetWidth, int nTargetHeight,
 		CSize monitorSize,
 		const CRotationParams& rotationParams,
@@ -167,7 +167,7 @@ public:
 		Offsets = offsets;
 		ProcFlags = eProcFlags;
 	}
-*/
+/*
 	CProcessParams(int nTargetWidth, int nTargetHeight,
 		int nRotation,
 		double dZoom,
@@ -175,18 +175,17 @@ public:
 		EProcessingFlags eProcFlags) {
 		TargetWidth = nTargetWidth;
 		TargetHeight = nTargetHeight;
-		Rotation = nRotation;
+		UserRotation = nRotation;
 		Zoom = dZoom;
 		Offsets = offsets;
 		ProcFlags = eProcFlags;
 	}
-
+*/
 	int TargetWidth;
 	int TargetHeight;
 	CSize MonitorSize;
-//	CRotationParams RotationParams;
+	CRotationParams RotationParams;
 	int UserRotation;
-	int Rotation;	// Old. Switch to using "UserRoation"
 	double Zoom;
 	CPoint Offsets;
 	CImageProcessingParams ImageProcParams;

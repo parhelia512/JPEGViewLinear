@@ -186,7 +186,6 @@ public:
 	void SetDIBInvalid() { m_ClippingSize = CSize(0, 0); }
 
 	// Verify that the image is currently rotated by the specified parameters and rotate the original pixels of the image if not.
-	bool VerifyRotation(int nRotation);
 	bool VerifyRotation(const CRotationParams& rotationParams);
 
 	// Returns if this image has been cropped or not
@@ -409,7 +408,6 @@ private:
 	bool m_bIsDestructivelyProcessed; // Original image pixels destructively processed (i.e. cropped or size changed)
 	bool m_bIsProcessedNoParamDB;
 	CRotationParams m_rotationParams; // current rotation
-	uint32 m_nRotation;	// GF: Todo: Switch to m_rotationParams
 	bool m_bRotationByEXIF; // is the rotation given by EXIF
 
 	// This is the geometry that was requested during last GetDIB() call
@@ -490,7 +488,6 @@ private:
 
 	// Return size of original image if the image would be rotated the given amount
 	CSize SizeAfterRotation(const CRotationParams& rotationParams);
-	CSize SizeAfterRotation(int nRotation);
 
 	// Gets the new size of the image after doing a free rotation
 	static CSize GetSizeAfterFreeRotation(const CSize& sourceSize, double dRotation, bool bAutoCrop, bool bKeepAspectRatio, CPoint & offset);
