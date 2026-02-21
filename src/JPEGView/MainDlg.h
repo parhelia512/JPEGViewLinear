@@ -6,6 +6,7 @@
 #include "MessageDef.h"
 #include "ProcessParams.h"
 #include "Helpers.h"
+#include "CropCtl.h"
 
 class CFileList;
 class CJPEGProvider;
@@ -62,22 +63,14 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
 		MESSAGE_HANDLER(WM_PAINT, OnPaint)
-/*
 		MESSAGE_HANDLER(WM_NCHITTEST, OnNCHitTest)
 		MESSAGE_HANDLER(WM_NCLBUTTONDOWN, OnNCLButtonDown)
-*/
 		MESSAGE_HANDLER(WM_LBUTTONDOWN, OnLButtonDown)
-/*
 		MESSAGE_HANDLER(WM_LBUTTONUP, OnLButtonUp)
-*/
 		MESSAGE_HANDLER(WM_LBUTTONDBLCLK, OnLButtonDblClk)
 		MESSAGE_HANDLER(WM_RBUTTONDOWN, OnRButtonDown)
-/*
 		MESSAGE_HANDLER(WM_RBUTTONUP, OnRButtonUp)
-*/
-/*GF*/	MESSAGE_HANDLER(WM_RBUTTONDBLCLK, OnRButtonDown)
 		MESSAGE_HANDLER(WM_MBUTTONDOWN, OnMButtonDown)
-		MESSAGE_HANDLER(WM_MBUTTONDBLCLK, OnMButtonDown)
 		MESSAGE_HANDLER(WM_MBUTTONUP, OnMButtonUp)
 		MESSAGE_HANDLER(WM_XBUTTONDOWN, OnXButtonDown)
 		MESSAGE_HANDLER(WM_XBUTTONDBLCLK, OnXButtonDown)
@@ -87,20 +80,17 @@ public:
 		MESSAGE_HANDLER(WM_SYSKEYDOWN, OnSysKeyDown)
 		MESSAGE_HANDLER(WM_GETDLGCODE, OnGetDlgCode)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
-/*
 		MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
-*/
 		MESSAGE_HANDLER(WM_CTLCOLOREDIT, OnCtlColorEdit)
-
 		MESSAGE_HANDLER(WM_IMAGE_LOAD_COMPLETED, OnImageLoadCompleted)
 		MESSAGE_HANDLER(WM_DISPLAYED_FILE_CHANGED_ON_DISK, OnDisplayedFileChangedOnDisk)
 		MESSAGE_HANDLER(WM_ACTIVE_DIRECTORY_FILELIST_CHANGED, OnActiveDirectoryFilelistChanged)
 		MESSAGE_HANDLER(WM_ANOTHER_INSTANCE_QUIT, OnAnotherInstanceStarted)
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
-/*
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
-*/
 		MESSAGE_HANDLER(WM_LOAD_FILE_ASYNCH, OnLoadFileAsynch)
+/*GF*/	MESSAGE_HANDLER(WM_RBUTTONDBLCLK, OnRButtonDown)
+/*GF*/	MESSAGE_HANDLER(WM_MBUTTONDBLCLK, OnMButtonDown)
 /*GF*/	MESSAGE_HANDLER(WM_COPYDATA, OnCopyData)			// (for receiving file path)
 /*GF*/	MESSAGE_HANDLER(WM_REFRESHVIEW, OnRefreshView)		// (to refresh the view from another app when window is not in foreground)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
@@ -166,10 +156,8 @@ public:
 	bool IsLDC() { return m_bLDC; }
 	bool IsKeepParams() { return m_bKeepParams; }
 	bool IsSpanVirtualDesktop() { return m_bSpanVirtualDesktop; }
-/*
 	bool IsCropping() { return m_pCropCtl->IsCropping(); }
 	bool IsDoCropping() { return m_pCropCtl->IsDoCropping(); }
-*/
 	bool IsDoDragging() { return m_bDoDragging; }
 	bool IsInZooming() { return m_bInZooming; }
 	bool IsShowZoomFactor() { return m_bShowZoomFactor; }
@@ -185,7 +173,6 @@ public:
 	CPanelMgr* GetPanelMgr() { return m_pPanelMgr; }
 	LPCTSTR CurrentFileName(bool bFileTitle);
 	CFileList* GetFileList() { return m_pFileList; }
-/*
 	CNavigationPanelCtl* GetNavPanelCtl() { return m_pNavPanelCtl; }
 	CEXIFDisplayCtl* GetEXIFDisplayCtl() { return m_pEXIFDisplayCtl; }
 	CUnsharpMaskPanelCtl* GetUnsharpMaskPanelCtl() { return m_pUnsharpMaskPanelCtl; }
@@ -196,7 +183,6 @@ public:
 	CWndButtonPanelCtl* GetWndButtonPanelCtl() { return m_pWndButtonPanelCtl; }
 	CInfoButtonPanelCtl* GetInfoButtonPanelCtl() { return m_pInfoButtonPanelCtl; }
 	CCropCtl* GetCropCtl() { return m_pCropCtl; }
-*/
 	const CRect& ClientRect() { return m_clientRect; }
 	const CRect& WindowRectOnClose() { return m_windowRectOnClose; } // only valid after having closed the window
 	const CRect& MonitorRect() { return m_monitorRect; }
@@ -204,20 +190,14 @@ public:
 	CJPEGProvider* GetJPEGProvider() { return m_pJPEGProvider; }
 	CKeyMap* GetKeyMap() { return m_pKeyMap; }
 	CPoint GetDIBOffset() { return m_DIBOffsets; }
-
 	double GetZoomMultiplier(CJPEGImage* pImage, const CRect& clientRect);
-
 	Helpers::EAutoZoomMode GetAutoZoomMode() { return m_bFullScreenMode ? m_eAutoZoomModeFullscreen : m_eAutoZoomModeWindowed; }
 	CPoint GetOffsets() { return m_offsets; }
 	CImageProcessingParams* GetImageProcessingParams() { return m_pImageProcParams; }
-
 	EProcessingFlags CreateDefaultProcessingFlags(bool bKeepParams = false);
-
 	void DisplayErrors(CJPEGImage* pCurrentImage, const CRect& clientRect, CDC& dc);
 	void DisplayFileName(const CRect& imageProcessingArea, CDC& dc, double realizedZoom);
-/*
 	void BlendBlackRect(CDC & targetDC, CPanel& panel, float fBlendFactor);
-*/
 
 	void UpdateWindowTitle(bool bForce);
 	void MouseOff();
@@ -227,18 +207,14 @@ public:
 	void ResetZoomTo100Percents(bool bZoomToMouse);
 	void ResetZoomToFitScreen(bool bFillWithCrop, bool bAllowEnlarge, bool bAdjustWindowSize);
 	bool PerformPan(int dx, int dy, bool bAbsolute);
-/*
 	void StartDragging(int nX, int nY, bool bDragWithZoomNavigator);
 	void DoDragging();
 	void EndDragging();
 	void SetCursorForMoveSection();
-*/
 	bool ScreenToImage(float & fX, float & fY); 
 	bool ImageToScreen(float & fX, float & fY);
 	void ExecuteCommand(int nCommand);
-/*
 	bool PrepareForModalPanel(); // returns if navigation panel was enabled, turns it off
-*/
 	int TrackPopupMenu(CPoint pos, HMENU hMenu);
 	void AdjustWindowToImage(bool bAfterStartup);
 	bool IsAdjustWindowToImage();
@@ -340,7 +316,6 @@ private:
 	CRect m_windowRectOnClose;
 	CString m_sSaveDirectory;
 	CString m_sSaveExtension;
-/*
 	CCropCtl* m_pCropCtl;
 	CZoomNavigatorCtl* m_pZoomNavigatorCtl;
 	CImageProcPanelCtl* m_pImageProcPanelCtl;
@@ -351,13 +326,10 @@ private:
 	CUnsharpMaskPanelCtl* m_pUnsharpMaskPanelCtl;
 	CRotationPanelCtl* m_pRotationPanelCtl;
 	CTiltCorrectionPanelCtl* m_pTiltCorrectionPanelCtl;
-*/
 	CPanelMgr* m_pPanelMgr;
 	CKeyMap* m_pKeyMap;
-/*
 	CPrintImage* m_pPrintImage;
 	CHelpDlg* m_pHelpDlg;
-*/
 	Helpers::ETransitionEffect m_eTransitionEffect;
 	int m_nTransitionTime;
 	DWORD m_nLastSlideShowImageTickCount;
@@ -369,14 +341,12 @@ private:
 	bool m_bSelectZoom;  // keeps track of select-to-zoom mode when CTRL+SHIFT+LMouse
 
 	void ExploreFile();
-//	bool OpenFileWithDialog(bool bFullScreen, bool bAfterStartup);
+	bool OpenFileWithDialog(bool bFullScreen, bool bAfterStartup);
 	void OpenFile(LPCTSTR sFileName, bool bAfterStartup);
-/*
 	bool SaveImage(bool bFullSize);
 	bool SaveImageNoPrompt(LPCTSTR sFileName, bool bFullSize);
 	void BatchCopy();
 	void SetAsDefaultViewer();
-*/
 	void HandleUserCommands(uint32 virtualKeyCode);
 	void ExecuteUserCommand(CUserCommand* pUserCommand);
 	void GotoImage(EImagePosition ePos, int nFlags);
@@ -396,30 +366,22 @@ private:
 	void StartLowQTimer(int nTimeout);
 	void InitParametersForNewImage();
 	void ExchangeProcessingParams();
-/*
 	void SaveParameters();
-*/
 	void AfterNewImageLoaded(bool bSynchronize, bool bAfterStartup, bool noAdjustWindow);
 	CRect ScreenToDIB(const CSize& sizeDIB, const CRect& rect);
 	void ToggleMonitor();
-/*
 	CRect GetZoomTextRect(CRect imageProcessingArea);
-*/
 	void EditINIFile(bool bGlobalINI);
 	int GetLoadErrorAfterOpenFile();
 	void CheckIfApplyAutoFitWndToImage(bool bInInitDialog);
 	void PrefetchDIB(const CRect& clientRect);
-/*
 	bool HandleMouseButtonByKeymap(int nMouseButton, bool bExecuteCommand = true);
-*/
 	bool UseSlideShowTransitionEffect();
 	void PaintToDC(CDC& dc);
 	void AnimateTransition();
 	void CleanupAndTerminate();
-/*
 	void InvalidateHelpDlg();
 	bool CloseHelpDlg();
-*/
 	LONG SetCurrentWindowStyle();
 	// this is for animated GIFs
 	void StartAnimation();

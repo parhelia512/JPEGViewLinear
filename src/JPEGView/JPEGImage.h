@@ -107,7 +107,7 @@ public:
 
 	// Apply unsharp masking to the original image pixels. Cannot be undone except by reloading the image from disk.
 	// Returns false if not enough memory is available to perform the operation.
-//	bool ApplyUnsharpMaskToOriginalPixels(const CUnsharpMaskParams & unsharpMaskParams);
+	bool ApplyUnsharpMaskToOriginalPixels(const CUnsharpMaskParams & unsharpMaskParams);
 
 	// Mirrors the image horizontally or vertically.
 	// Applies to original pixels!
@@ -132,7 +132,7 @@ public:
 	// See RotateOriginalPixels() for auto crop parameter and keep aspect ratio parameter.
 	// In all cases the size of the image in pixels is changed by this operation.
 	// Returns false if not enough memory is available to perform the operation.
-//	bool TrapezoidOriginalPixels(const CTrapezoid& trapezoid, bool bAutoCrop, bool bKeepAspectRatio);
+	bool TrapezoidOriginalPixels(const CTrapezoid& trapezoid, bool bAutoCrop, bool bKeepAspectRatio);
 
 	// Resizes the original pixels to the given target size.
 	// Returns false if not enough memory is available to perform the operation or if specified size is not valid.
@@ -169,7 +169,7 @@ public:
 	void OrigToDIB(float & fX, float & fY);
 
 	// Gets the rotation applied to the pixels
-//	const CRotationParams& GetRotationParams() {return m_rotationParams; }
+	const CRotationParams& GetRotationParams() {return m_rotationParams; }
 
 	// Gets or sets the JPEG chromo sampling. See turbojpeg.h for the TJSAMP enumeration.
 	TJSAMP GetJPEGChromoSampling() { return m_eJPEGChromoSampling; }
@@ -453,30 +453,32 @@ private:
 	// Resample when panning was done, using existing data in DIBs. Old clipping rectangle is given in oldClippingRect
 	void ResampleWithPan(void* & pDIBPixels, void* & pDIBPixelsLUTProcessed, CSize fullTargetSize, 
 		CSize clippingSize, CPoint targetOffset, CRect oldClippingRect,
-		EProcessingFlags eProcFlags, EResizeType eResizeType);
+		EProcessingFlags eProcFlags, const CImageProcessingParams & imageProcParams, double dRotation, EResizeType eResizeType);
 
 	// Resample to given target size. Returns resampled DIB
 	void* Resample(CSize fullTargetSize, CSize clippingSize, CPoint targetOffset, 
-		EProcessingFlags eProcFlags, EResizeType eResizeType);
+		EProcessingFlags eProcFlags, double dSharpen, double dRotation, EResizeType eResizeType);
 
 	// Resize to given target size. Returns resampled DIB. Used when resizing original pixels.
 	void* InternalResize(void* pixels, int channels, EResizeFilter filter, CSize targetSize, CSize sourceSize);
 
+	// Apply the given unsharp mask to m_pDIBPixels (can be null to not apply an unsharp mask, then NULL is returned)
+	void* ApplyUnsharpMask(const CUnsharpMaskParams * pUnsharpMaskParams, bool bNoChangesLDCandLUT);
 
 	// pCachedTargetDIB is a pointer at the caller side holding the old processed DIB.
 	// Returns a pointer to DIB to be used (either pCachedTargetDIB or pSourceDIB)
 	// If bOnlyCheck is set to true, the method does nothing but only checks if the existing processed DIB
 	// can be used (return != NULL) or not (return == NULL)
 	// The out parameter bParametersChanged returns if one of the parameters relevant for image processing has been changed since the last call
-	void* ApplyCorrectionLUTandLDC(EProcessingFlags eProcFlags,
+	void* ApplyCorrectionLUTandLDC(const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags,
 		void * & pCachedTargetDIB, CSize fullTargetSize, CPoint targetOffset, 
 		void * pSourceDIB, CSize dibSize, bool bGeometryChanged, bool bOnlyCheck, bool bCanTakeOwnershipOfSourceDIB, bool &bParametersChanged);
 
-	void* ApplyCorrectionLUTandLDC(EProcessingFlags eProcFlags,
+	void* ApplyCorrectionLUTandLDC(const CImageProcessingParams & imageProcParams, EProcessingFlags eProcFlags,
 		void * & pCachedTargetDIB, CSize fullTargetSize, CPoint targetOffset, 
 		void * pSourceDIB, CSize dibSize, bool bGeometryChanged, bool bOnlyCheck, bool bCanTakeOwnershipOfSourceDIB) {
 		bool bNotUsed;
-		return ApplyCorrectionLUTandLDC(eProcFlags, pCachedTargetDIB, fullTargetSize, targetOffset, 
+		return ApplyCorrectionLUTandLDC(imageProcParams, eProcFlags, pCachedTargetDIB, fullTargetSize, targetOffset, 
 			pSourceDIB, dibSize, bGeometryChanged, bOnlyCheck, bCanTakeOwnershipOfSourceDIB, bNotUsed);
 	}
 

@@ -188,6 +188,26 @@ static double EvaluateCubicFilterKernel(double dFrac, int nKernelElement) {
 	return -1;
 }
 
+// Filter is normalized in fixed point format, sum of elements is FP_ONE
+// nFrac is fractional part (sub-pixel offset), coded in [0..65535] --> [0...1]
+// Returned filter in pFilterOut has length BICUBIC_FILTER_LEN
+static void GetBicubicFilter(uint16 nFrac, int16* pFilterOut) {
+	const int BICUBIC_FILTER_LEN = 4;
+	double dFrac = nFrac*(1.0/65535.0);
+	double dFilter[BICUBIC_FILTER_LEN];
+	double dSum = 0.0;
+	for (int i = 0; i < BICUBIC_FILTER_LEN; i++) {
+		dFilter[i] = EvaluateCubicFilterKernel(dFrac, i);
+		dSum += dFilter[i];
+	}
+	for (int i = 0; i < BICUBIC_FILTER_LEN; i++) {
+		pFilterOut[i] = roundToInt16(CResizeFilter::FP_ONE * dFilter[i] / dSum);
+	}
+
+	NormalizeFilter(pFilterOut, BICUBIC_FILTER_LEN);
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////
 // Public
 //////////////////////////////////////////////////////////////////////////////////////
@@ -226,6 +246,16 @@ bool CResizeFilter::ParametersMatch(int nSourceSize, int nTargetSize, EFilterTyp
 			return true;
 	} else {
 		return false;
+	}
+}
+
+void CResizeFilter::GetBicubicFilterKernels(int nNumKernels, int16* pKernels) {
+	uint32 nIncFrac = 65535/(nNumKernels - 1);
+	uint32 nKFrac = 0;
+	for (int i = 0; i < nNumKernels; i++) {
+		int16* pThisKernel = &(pKernels[i * 4]);
+		GetBicubicFilter((uint16)nKFrac, pThisKernel);
+		nKFrac += nIncFrac;
 	}
 }
 
