@@ -2514,7 +2514,7 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 				SetDesktopWallpaper::SetProcessedImageAsWallpaper(*m_pCurrentImage);
 			}
 			break;
-		case IDM_CUSTOM_RANDOM_TOGGLE:
+		case IDM_TOGGLE_SORT_RANDOM:
 			if (m_pFileList != NULL) {
 				if (m_pFileList->GetSorting() == Helpers::FS_FileName) {
 					m_pFileList->SetSorting(Helpers::FS_Random, m_pFileList->IsSortedAscending());
@@ -2526,38 +2526,19 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 				this->Invalidate(FALSE);
 			}
 			break;
-		case IDM_CUSTOM_FIT_TOGGLE:
-		/*
-			double dOldZoom = m_dZoom;
-			m_bZoomMode = !m_bZoomMode;
-			m_dZoom = ConditionalZoomFactor();
-			
-			if ((m_offsets.x != 0) || (m_offsets.y != 0)) {
-				m_offsets_custom.x = m_offsets.x;
-				m_offsets_custom.y = m_offsets.y;
-				m_offsets = CPoint(0, 0);
-			} else if ((m_offsets_custom.x != 0) || (m_offsets_custom.y != 0)) {
-				m_offsets.x = m_offsets_custom.x;
-				m_offsets.y = m_offsets_custom.y;
-			}
-
-			if (abs(m_dZoom - dOldZoom) > 0) {
-				m_bInZooming = true;
-				StartLowQTimer(ZOOM_TIMEOUT);
-				this->Invalidate(FALSE);
-			}
-		*/
+		case IDM_TOGGLE_FIT_MODE:
+			ToggleFitMode();
 			break;
-		case IDM_CUSTOM_OVERLAY_TOGGLE:
+		case IDM_TOGGLE_INFO_OVERLAY:
 			m_bShowHelp = false;
 			m_bShowInfo = !m_bShowInfo;
 			this->Invalidate(FALSE);
 			break;
-		case IDM_CUSTOM_LANGUAGE_SWITCH:
-			ToggleBookLanguage();
+		case IDM_CHANGE_FOLDER_LANGUAGE:
+			ChangeFolderLanguage();
 			break;
-		case IDM_CUSTOM_EDIT_ACTION:
-			EditFileInDefaultExternalApplication();
+		case IDM_OPEN_DEFAULT_EDITOR:
+			OpenDefaultEditor();
 			break;
 	}
 	if (nCommand >= IDM_FIRST_USER_CMD && nCommand <= IDM_LAST_USER_CMD) {
@@ -2568,7 +2549,28 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 	}
 }
 
-void CMainDlg::ToggleBookLanguage() {
+void CMainDlg::ToggleFitMode() {
+	double dOldZoom = m_dZoom;
+	m_bZoomMode = !m_bZoomMode;
+	m_dZoom = ConditionalZoomFactor();
+	
+	if ((m_offsets.x != 0) || (m_offsets.y != 0)) {
+		m_offsets_custom.x = m_offsets.x;
+		m_offsets_custom.y = m_offsets.y;
+		m_offsets = CPoint(0, 0);
+	} else if ((m_offsets_custom.x != 0) || (m_offsets_custom.y != 0)) {
+		m_offsets.x = m_offsets_custom.x;
+		m_offsets.y = m_offsets_custom.y;
+	}
+
+	if (abs(m_dZoom - dOldZoom) > 0) {
+		m_bInZooming = true;
+		StartLowQTimer(ZOOM_TIMEOUT);
+		this->Invalidate(FALSE);
+	}
+}
+
+void CMainDlg::ChangeFolderLanguage() {
 	LPCTSTR sCurrentFileName = CurrentFileName(false);
 	if (sCurrentFileName != NULL) {
 		TCHAR sFullPath[MAX_PATH];
@@ -2717,7 +2719,7 @@ void CMainDlg::ToggleBookLanguage() {
 	}
 }
 
-void CMainDlg::EditFileInDefaultExternalApplication() {
+void CMainDlg::OpenDefaultEditor() {
 	LPCTSTR sCurrentFileName = CurrentFileName(false);
 	if (sCurrentFileName != NULL) {
 		if (m_bFullScreenMode) {

@@ -419,6 +419,7 @@ private:
 	CPoint m_offsets_custom;
 	void SaveBookmark();
 	CString ReplaceNoCase(LPCTSTR instr,LPCTSTR oldstr,LPCTSTR newstr);
-	void ToggleBookLanguage();
-	void EditFileInDefaultExternalApplication();
+	void ChangeFolderLanguage();
+	void OpenDefaultEditor();
+	void ToggleFitMode();
 };
