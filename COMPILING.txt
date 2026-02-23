@@ -1,0 +1,32 @@
+JPEGView source code readme
+***************************
+
+To compile JPEGView you need:
+
+- Visual Studio 2019 professional or community editions (JPEGView 32 and 64 bit versions supported)
+- Visual Studio 2017 professional or community editions (JPEGView 32 and 64 bit versions supported)
+  (Configured to build XP-compatible versions only, does not include all current features, does not include MSI installer)
+- Windows Template Library (WTL), Version 8.1+ (http://sourceforge.net/projects/wtl/) installed to
+  $(ProjectDir)..\..\deps\WTL-sf (This can be be automatically populated by cloning the submodule)
+
+
+To compile the MSI installer, you need:
+- WiX Toolset v3.11 or later (https://wixtoolset.org/releases/)
+- WiX Toolset Visual Studio Extension for your version of Visual Studio
+
+
+Please note:
+- Windows XP SP2 or later is needed to run the 32-bit version (When built from VS2017).
+- 64-bit Windows 7 or later is needed to run the 64-bit version.
+
+
+NOTE: VS2019 is the current active JPEGView development environment.
+
+
+Legacy Solution files
+*********************
+
+NOTE: after the tag "last-cpp14-code", there is code that requires C++17.  This code will not work on previous versions of Visual Studio.
+      An #ifdef is used to disable that feature when compiling for standard below C++17
+
+Older solution files have been removed from the source tree.  If you still need them, clone the tag v1.2.45
