@@ -256,15 +256,16 @@
 #define IDM_ZOOM_MODE		12300
 
 #define IDM_TOGGLE_SORT_RANDOM	12450		// :KeyMap: toggle between random and name sort
-#define IDM_TOGGLE_FIT_MODE		12451		// :KeyMap: toggle between original size and fit window
 #define IDM_TOGGLE_INFO_OVERLAY	12452		// :KeyMap: toggle custom overlay
-#define IDM_CHANGE_FOLDER_LANGUAGE	12453		// :KeyMap: jump between different language manga pages in sibling pathes
-#define IDM_OPEN_DEFAULT_EDITOR		12454		// :KeyMap: open image with default registry edit action of this file type
+#define IDM_CHANGE_FOLDER_LANGUAGE	12453	// :KeyMap: jump between different language folders (varying in endings like " [en]", " [de]", " [ko]")
+#define IDM_OPEN_DEFAULT_EDITOR		12454	// :KeyMap: open image with default registry edit action of this file type
 
-#define IDM_AUTO_ZOOM_FIT_NO_ZOOM	12500		// :KeyMap: set auto zoom mode fit to screen, never zoom
-#define IDM_AUTO_ZOOM_FILL_NO_ZOOM	12510		// :KeyMap: set auto zoom mode fill screen, never zoom
-#define IDM_AUTO_ZOOM_FIT	12520		// :KeyMap: set auto zoom mode fit to screen
-#define IDM_AUTO_ZOOM_FILL	12530		// :KeyMap: set auto zoom mode fill screen
+#define IDM_AUTO_ZOOM_NONE	12500		// :KeyMap: set auto zoom mode disabled
+#define IDM_AUTO_ZOOM_FIT_NO_ZOOM	12510		// :KeyMap: set auto zoom mode fit to screen, never zoom
+#define IDM_AUTO_ZOOM_FILL_NO_ZOOM	12520		// :KeyMap: set auto zoom mode fill screen, never zoom
+#define IDM_AUTO_ZOOM_FIT	12530		// :KeyMap: set auto zoom mode fit to screen
+#define IDM_AUTO_ZOOM_FILL	12540		// :KeyMap: set auto zoom mode fill screen
+#define IDM_AUTO_ZOOM_BOOK_MODE	12550		// :KeyMap: set auto zoom mode to book mode
 #define IDM_EDIT_GLOBAL_CONFIG 12600		// :KeyMap: edit global configuration
 #define IDM_EDIT_USER_CONFIG   12610		// :KeyMap: edit user configuration
 #define IDM_MANAGE_OPEN_WITH_MENU 12612

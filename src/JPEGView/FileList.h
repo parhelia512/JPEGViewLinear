@@ -144,8 +144,7 @@ public:
 
 	// delete the chain of CFileLists forward and backward and only leave the current node alive
 	void DeleteHistory(bool onlyForward = false);
-	
-/*GF*/	void ListFileDelete(LPCTSTR sFileName);
+
 /*GF*/	bool IsEndpoint();	// Check if at the beginning or end of the file list. Used by custom function SaveBookmark()
 
 private:

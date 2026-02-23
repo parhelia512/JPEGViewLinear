@@ -11,8 +11,6 @@
 // list of images in the directory needs to be reloaded
 #define WM_ACTIVE_DIRECTORY_FILELIST_CHANGED (WM_APP + 8)
 
-#define WM_ANOTHER_INSTANCE_QUIT (WM_APP + 23)
-
 // Posted to main dialog for asynchronously loading the image with file name CMainDlg::m_sStartupFile
 #define WM_LOAD_FILE_ASYNCH (WM_APP + 24)
 

@@ -24,30 +24,32 @@ struct FilterKernelBlock {
 };
 
 // Filter kernel and filter kernel block for SSE (SIMD).
+// For int16 in SSE, we need 8 repetitions of each kernel element (128 bit in total, SSE register size)
 // For f32 in SSE, we need 4 repetitions of each kernel element (4 x 32 = 128 bit in total, SSE register size)
-/*GF*/	struct SSEKernelElement {
-/*GF*/		float valueRepeated[4];
-/*GF*/	};
+struct XMMKernelElement {
+	float valueRepeated[4];
+};
 
-struct SSEFilterKernel {
+struct XMMFilterKernel {
 	int FilterLen;
 	int FilterOffset;
 	int nPad1, nPad2; // padd to 16 bytes before kernel starts
-	SSEKernelElement Kernel[1]; // this is a placehoder for a kernel of FilterLen elements
+	XMMKernelElement Kernel[1]; // this is a placeholder for a kernel of FilterLen elements
 };
 
-struct SSEFilterKernelBlock {
-	SSEFilterKernel * Kernels;
-	SSEFilterKernel** Indices; // Length equals target size
+struct XMMFilterKernelBlock {
+	XMMFilterKernel * Kernels;
+	XMMFilterKernel** Indices; // Length equals target size
 	int NumKernels; // this is NUM_KERNELS_RESIZE + border handling kernels as needed
 	uint8* UnalignedMemory; // do not use directly
 };
 
 // Filter kernel and filter kernel block for AVX (SIMD).
+// For AVX, we need 16 repetitions of each kernel element (256 bit in total, AVX register size)
 // For f32 in AVX2, we need 8 repetitions of each kernel element (8 x 32 = 256 bit in total, AVX2 register size)
-/*GF*/	struct AVXKernelElement {
-/*GF*/		float valueRepeated[8];
-/*GF*/	};
+struct AVXKernelElement {
+	float valueRepeated[8];
+};
 
 struct AVXFilterKernel {
 	int FilterLen;
@@ -80,7 +82,8 @@ public:
 	};
 
 	// Creates a filter for resizing from nSourceSize to nTargetSize 
-	CResizeFilter(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType);
+	// dSharpen must be in [0..0.5] - it is ignored for upsampling kernels.
+	CResizeFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter, FilterSIMDType filterSIMDType);
 	~CResizeFilter();
 
 	// Gets a block of kernels for resizing from the source size to the target size.
@@ -88,9 +91,9 @@ public:
 	// lifetime of the CResizeFilter object that generated it.
 	const FilterKernelBlock& GetFilterKernels() const { return m_kernels; }
 
-	// As above, returns the structure suitable for SSE processing with aligned memory.
-	// CResizeFilter must have been created with SSE support (FilterSIMDType_SSE)
-	const SSEFilterKernelBlock& GetSSEFilterKernels() const { assert(m_filterSIMDType == FilterSIMDType_SSE); return m_kernelsSSE; }
+	// As above, returns the structure suitable for XMM processing with aligned memory.
+	// CResizeFilter must have been created with XMM support (FilterSIMDType_SSE)
+	const XMMFilterKernelBlock& GetXMMFilterKernels() const { assert(m_filterSIMDType == FilterSIMDType_SSE); return m_kernelsXMM; }
 
 	// As above, returns the structure suitable for AVX2 processing with aligned memory.
 	// CResizeFilter must have been created with AVX2 support (FilterSIMDType_AVX)
@@ -111,17 +114,17 @@ private:
 	int m_nFilterOffset;
 	int16 m_Filter[MAX_FILTER_LEN];
 	FilterKernelBlock m_kernels;
-	SSEFilterKernelBlock m_kernelsSSE;
+	XMMFilterKernelBlock m_kernelsXMM;
 	AVXFilterKernelBlock m_kernelsAVX;
 	FilterSIMDType m_filterSIMDType;
 	int m_nRefCnt;
 
 	void CalculateFilterKernels();
-	void CalculateSSEFilterKernels();
+	void CalculateXMMFilterKernels();
 	void CalculateAVXFilterKernels();
 
 	// Checks if this filter matches the given parameters
-	bool ParametersMatch(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType);
+	bool ParametersMatch(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter, FilterSIMDType filterSIMDType);
 
 	void CalculateFilterParams(EFilterType eFilter);
 	int16* GetFilter(uint16 nFrac, EFilterType eFilter);
@@ -135,7 +138,7 @@ public:
 	static CResizeFilterCache& This();
 
 	// Gets filter
-	const CResizeFilter& GetFilter(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType);
+	const CResizeFilter& GetFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter, FilterSIMDType filterSIMDType);
 	// Release filter
 	void ReleaseFilter(const CResizeFilter& filter);
 
@@ -153,8 +156,8 @@ private:
 // Helper class for accessing filters from filter cache, automatically releasing the filter when object goes out of scope
 class CAutoFilter {
 public:
-	CAutoFilter(int nSourceSize, int nTargetSize, EFilterType eFilter) 
-		: m_filter(CResizeFilterCache::This().GetFilter(nSourceSize, nTargetSize, eFilter, FilterSIMDType_None)) {}
+	CAutoFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter) 
+		: m_filter(CResizeFilterCache::This().GetFilter(nSourceSize, nTargetSize, dSharpen, eFilter, FilterSIMDType_None)) {}
 	
 	const FilterKernelBlock& Kernels() { return m_filter.GetFilterKernels(); }
 	
@@ -164,14 +167,14 @@ private:
 };
 
 // Helper class for accessing filters from filter cache, automatically releasing the filter when object goes out of scope
-class CAutoSSEFilter {
+class CAutoXMMFilter {
 public:
-	CAutoSSEFilter(int nSourceSize, int nTargetSize, EFilterType eFilter) 
-		: m_filter(CResizeFilterCache::This().GetFilter(nSourceSize, nTargetSize, eFilter, FilterSIMDType_SSE)) {}
+	CAutoXMMFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter) 
+		: m_filter(CResizeFilterCache::This().GetFilter(nSourceSize, nTargetSize, dSharpen, eFilter, FilterSIMDType_SSE)) {}
 	
-	const SSEFilterKernelBlock& Kernels() { return m_filter.GetSSEFilterKernels(); }
+	const XMMFilterKernelBlock& Kernels() { return m_filter.GetXMMFilterKernels(); }
 	
-	~CAutoSSEFilter() { CResizeFilterCache::This().ReleaseFilter(m_filter); }
+	~CAutoXMMFilter() { CResizeFilterCache::This().ReleaseFilter(m_filter); }
 private:
 	const CResizeFilter& m_filter;
 };
@@ -179,8 +182,8 @@ private:
 // Helper class for accessing filters from filter cache, automatically releasing the filter when object goes out of scope
 class CAutoAVXFilter {
 public:
-	CAutoAVXFilter(int nSourceSize, int nTargetSize, EFilterType eFilter)
-		: m_filter(CResizeFilterCache::This().GetFilter(nSourceSize, nTargetSize, eFilter, FilterSIMDType_AVX)) {}
+	CAutoAVXFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter)
+		: m_filter(CResizeFilterCache::This().GetFilter(nSourceSize, nTargetSize, dSharpen, eFilter, FilterSIMDType_AVX)) {}
 
 	const AVXFilterKernelBlock& Kernels() { return m_filter.GetAVXFilterKernels(); }
 

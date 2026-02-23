@@ -3,19 +3,17 @@
 #include "Helpers.h"
 #include "LookupTables.h"	// needed for sRGB8_LinRGB12[256]
 
-CFloatImage::CFloatImage(int nWidth, int nHeight, int padding)
-	{
+CXMMImage::CXMMImage(int nWidth, int nHeight, int padding) {
 	Init(nWidth, nHeight, false, padding);
-	}
+}
 
-CFloatImage::CFloatImage(int nWidth, int nHeight, bool bPadHeight, int padding)
-	{
+CXMMImage::CXMMImage(int nWidth, int nHeight, bool bPadHeight, int padding) {
 	Init(nWidth, nHeight, bPadHeight, padding);
-	}
+}
 
 //GF: version for f32 SSE & AVX2
-CFloatImage::CFloatImage(int nWidth, int nHeight, int nFirstX, int nLastX, int nFirstY, int nLastY, const void* pDIB, int nChannels, int padding)
-	{
+CXMMImage::CXMMImage(int nWidth, int nHeight, int nFirstX, int nLastX, int nFirstY, int nLastY, 
+	const void* pDIB, int nChannels, int padding) {
 	int nSectionWidth = nLastX - nFirstX + 1;
 	int nSectionHeight = nLastY - nFirstY + 1;
 	Init(nSectionWidth, nSectionHeight, false, padding);
@@ -23,7 +21,6 @@ CFloatImage::CFloatImage(int nWidth, int nHeight, int nFirstX, int nLastX, int n
 	if (m_pMemory != NULL) {
 		int nSrcLineWidthPadded = Helpers::DoPadding(nWidth * nChannels, 4);
 		const uint8* pSrc = (uint8*)pDIB + (long long)nFirstY*(long long)nSrcLineWidthPadded + (long long)nFirstX*(long long)nChannels;
-
 		float* pDst = (float*) m_pMemory;
 		for (int j = 0; j < nSectionHeight; j++) {
 			if (nChannels == 4) {
@@ -41,7 +38,7 @@ CFloatImage::CFloatImage(int nWidth, int nHeight, int nFirstX, int nLastX, int n
 					pDst[d] = ((float)sRGB8_LinRGB12[nRed]);
 				}
 			} else {
-				for (int i = 0; i < nSectionWidth; i++)	{
+				for (int i = 0; i < nSectionWidth; i++) {
 					int s = i*3;
 					int d = i;
 					pDst[d] = ((float)sRGB8_LinRGB12[pSrc[s]]);
@@ -57,7 +54,7 @@ CFloatImage::CFloatImage(int nWidth, int nHeight, int nFirstX, int nLastX, int n
 	}
 }
 
-CFloatImage::~CFloatImage(void) {
+CXMMImage::~CXMMImage(void) {
 	if (m_pMemory != NULL) {
 		// free the memory pages
 		::VirtualFree(m_pMemory, 0, MEM_RELEASE);
@@ -65,7 +62,7 @@ CFloatImage::~CFloatImage(void) {
 	}
 }
 
-void* CFloatImage::ConvertToDIBRGBA() const {
+void* CXMMImage::ConvertToDIBRGBA() const {
 	if (m_pMemory == NULL) {
 		return NULL;
 	}
@@ -95,7 +92,7 @@ void* CFloatImage::ConvertToDIBRGBA() const {
 // Private
 /////////////////////////////////////////////////////////////////////////////////////////
 
-void CFloatImage::Init(int nWidth, int nHeight, bool bPadHeight, int padding) {
+void CXMMImage::Init(int nWidth, int nHeight, bool bPadHeight, int padding) {
 	// pad scanlines
 	m_nPaddedWidth = Helpers::DoPadding(nWidth, padding);
 	if (bPadHeight) {
@@ -105,9 +102,7 @@ void CFloatImage::Init(int nWidth, int nHeight, bool bPadHeight, int padding) {
 	}
 	m_nWidth = nWidth;
 	m_nHeight = nHeight;
-	// source would have (m_nPaddedWidth * 1((Bytes/ChannelPixel)*3 ChannelPixels)) * 1 (SingleComponentLines/SourceLine)
-	//int nMemSize = GetMemSize();	// = (m_nPaddedWidth * 2(Bytes/ChannelPixel)) * (m_nPaddedHeight * 3(SingleComponentLines/SourceLine));
-	int nMemSize = GetMemSize();	// = (m_nPaddedWidth * 4(Bytes/ChannelPixel)) * (m_nPaddedHeight * 3(SingleComponentLines/SourceLine));
+	int nMemSize = GetMemSize();
 
 	// Allocate memory aligned on page boundaries
 	m_pMemory = ::VirtualAlloc(

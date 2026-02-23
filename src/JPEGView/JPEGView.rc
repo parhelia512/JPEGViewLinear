@@ -423,10 +423,12 @@ BEGIN
         END
         POPUP "Auto zoom mode"
         BEGIN
+            MENUITEM "None",                        IDM_AUTO_ZOOM_NONE
             MENUITEM "Fit to screen (no zoom)",     IDM_AUTO_ZOOM_FIT_NO_ZOOM
             MENUITEM "Fill with crop (no zoom)",    IDM_AUTO_ZOOM_FILL_NO_ZOOM
             MENUITEM "Fit to screen",               IDM_AUTO_ZOOM_FIT
             MENUITEM "Fill with crop",              IDM_AUTO_ZOOM_FILL
+            MENUITEM "Book Mode",                   IDM_AUTO_ZOOM_BOOK_MODE
         END
         MENUITEM SEPARATOR
         POPUP "Settings/Admin"

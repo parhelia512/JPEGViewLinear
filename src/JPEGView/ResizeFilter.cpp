@@ -103,21 +103,17 @@ static inline double EvaluateCore_Catrom(double dX)
 #define PI_SQR (PI*PI)
 
 // 2-lobe Lanczos filter (Equivalent to IM Lanczos2, support is [-2.0, 2.0]
-static inline double EvaluateCore_Lanczos2(double dX)
-	{
-	if (abs(dX) < 1e-6)
-		{
+static inline double EvaluateCore_Lanczos2(double dX) {
+	if (abs(dX) < 1e-6) {
 		return 1.0;
-		}
-	else if (abs(dX) < 2)
-		{
-		return (2 * sin(PI*dX)*sin(PI_DIV_2*dX)) / (PI_SQR*dX*dX);
-		}
-	else
-		{
-		return 0.0;
-		}
 	}
+	else if (abs(dX) < 2) {
+		return (2 * sin(PI*dX)*sin(PI_DIV_2*dX)) / (PI_SQR*dX*dX);
+	}
+	else {
+		return 0.0;
+	}
+}
 
 // Evaluate a filter kernel at position dX. The filter kernel is assumed to have zero solutions at
 // integer values and is centered around zero.
@@ -212,36 +208,38 @@ static void GetBicubicFilter(uint16 nFrac, int16* pFilterOut) {
 // Public
 //////////////////////////////////////////////////////////////////////////////////////
 
-CResizeFilter::CResizeFilter(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType) {
+CResizeFilter::CResizeFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter, FilterSIMDType filterSIMDType)
+	: m_kernels{ 0 },
+	m_kernelsXMM{ 0 },
+	m_kernelsAVX{ 0 },
+	m_nRefCnt{ 0 }
+{
 	m_nSourceSize = nSourceSize;
 	m_nTargetSize = nTargetSize;
+	m_dSharpen = min(0.5, max(0.0, dSharpen));
 	m_eFilter = eFilter;
 	m_filterSIMDType = filterSIMDType;
-	m_nRefCnt = 0;
-	memset(&m_kernels, 0, sizeof(m_kernels));
-	memset(&m_kernelsSSE, 0, sizeof(m_kernelsSSE));
-	memset(&m_kernelsAVX, 0, sizeof(m_kernelsAVX));
 
 	if (filterSIMDType == FilterSIMDType_AVX) {
 		CalculateAVXFilterKernels();
 	} else if (filterSIMDType == FilterSIMDType_SSE) {
-		CalculateSSEFilterKernels();
+		CalculateXMMFilterKernels();
 	} else {
 		CalculateFilterKernels();
 	}
 }
 
 CResizeFilter::~CResizeFilter(void) {
-		delete[] m_kernels.Indices;
-		delete[] m_kernels.Kernels;
-		delete[] m_kernelsSSE.Indices;
-		delete[] m_kernelsSSE.UnalignedMemory;
-		delete[] m_kernelsAVX.Indices;
-		delete[] m_kernelsAVX.UnalignedMemory;
+	delete[] m_kernels.Indices;
+	delete[] m_kernels.Kernels;
+	delete[] m_kernelsXMM.Indices;
+	delete[] m_kernelsXMM.UnalignedMemory;
+	delete[] m_kernelsAVX.Indices;
+	delete[] m_kernelsAVX.UnalignedMemory;
 }
 
-bool CResizeFilter::ParametersMatch(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType) {
-	if (nSourceSize == m_nSourceSize && nTargetSize == m_nTargetSize && 
+bool CResizeFilter::ParametersMatch(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter, FilterSIMDType filterSIMDType) {
+	if (nSourceSize == m_nSourceSize && nTargetSize == m_nTargetSize && abs(dSharpen - m_dSharpen) < 1e-6 &&
 		eFilter == m_eFilter && m_filterSIMDType == filterSIMDType) {
 			return true;
 	} else {
@@ -346,7 +344,7 @@ void CResizeFilter::CalculateFilterKernels() {
 }
 
 // GF version with 4 x float32 (instead of 8 x int16)
-void CResizeFilter::CalculateSSEFilterKernels() {
+void CResizeFilter::CalculateXMMFilterKernels() {
 	CalculateFilterKernels();
 	if (m_nTargetSize == 0) {
 		return;
@@ -358,34 +356,34 @@ void CResizeFilter::CalculateSSEFilterKernels() {
 	for (int i = 0; i < m_kernels.NumKernels; i++) {
 		nTotalKernelElements += m_kernels.Kernels[i].FilterLen;
 	}
-	uint32 nSizeOfKernels = m_kernels.NumKernels * 32 + sizeof(SSEKernelElement) * nTotalKernelElements;
+	uint32 nSizeOfKernels = m_kernels.NumKernels * 32 + sizeof(XMMKernelElement) * nTotalKernelElements;
 
-	m_kernelsSSE.NumKernels = m_kernels.NumKernels;
-	m_kernelsSSE.Indices = new SSEFilterKernel*[m_nTargetSize];
-	m_kernelsSSE.UnalignedMemory = new uint8[nSizeOfKernels + 31];
-	m_kernelsSSE.Kernels = (SSEFilterKernel*)(((PTR_INTEGRAL_TYPE)m_kernelsSSE.UnalignedMemory + 31) & ~31);
-	memset(m_kernelsSSE.Kernels, 0, nSizeOfKernels);
+	m_kernelsXMM.NumKernels = m_kernels.NumKernels;
+	m_kernelsXMM.Indices = new XMMFilterKernel*[m_nTargetSize];
+	m_kernelsXMM.UnalignedMemory = new uint8[nSizeOfKernels + 31];
+	m_kernelsXMM.Kernels = (XMMFilterKernel*)(((PTR_INTEGRAL_TYPE)m_kernelsXMM.UnalignedMemory + 31) & ~31);
+	memset(m_kernelsXMM.Kernels, 0, nSizeOfKernels);
 
 	// create an array of the start address of the filter kernels
-	SSEFilterKernel** pKernelStartAddress = new SSEFilterKernel*[m_kernelsSSE.NumKernels];
-	// create the SSE kernels, pack the kernels
-	SSEFilterKernel* pCurKernelSSE = m_kernelsSSE.Kernels;
-	for (int i = 0; i < m_kernelsSSE.NumKernels; i++) {
+	XMMFilterKernel** pKernelStartAddress = new XMMFilterKernel*[m_kernelsXMM.NumKernels];
+	// create the XMM kernels, pack the kernels
+	XMMFilterKernel* pCurKernelXMM = m_kernelsXMM.Kernels;
+	for (int i = 0; i < m_kernelsXMM.NumKernels; i++) {
 		int nCurFilterLen = m_kernels.Kernels[i].FilterLen;
-		pKernelStartAddress[i] = pCurKernelSSE;
-		pCurKernelSSE->FilterLen = nCurFilterLen;
-		pCurKernelSSE->FilterOffset = m_kernels.Kernels[i].FilterOffset;
+		pKernelStartAddress[i] = pCurKernelXMM;
+		pCurKernelXMM->FilterLen = nCurFilterLen;
+		pCurKernelXMM->FilterOffset = m_kernels.Kernels[i].FilterOffset;
 		for (int j = 0; j < nCurFilterLen; j++) {
 			for (int k = 0; k < 4; k++) {
-				pCurKernelSSE->Kernel[j].valueRepeated[k] = (((float)(m_kernels.Kernels[i].Kernel[j])) / (float)FP_ONE);	// so output should be [0.0...1.0]
+				pCurKernelXMM->Kernel[j].valueRepeated[k] = (((float)(m_kernels.Kernels[i].Kernel[j])) / (float)FP_ONE);	// so output should be [0.0...1.0]
 			}
 		}
-		pCurKernelSSE = (SSEFilterKernel*) ((PTR_INTEGRAL_TYPE)pCurKernelSSE + 32 + sizeof(SSEKernelElement)*nCurFilterLen);
+		pCurKernelXMM = (XMMFilterKernel*) ((PTR_INTEGRAL_TYPE)pCurKernelXMM + 32 + sizeof(XMMKernelElement)*nCurFilterLen);
 	}
 
 	for (int i = 0; i < m_nTargetSize; i++) {
 		int nIndex = (int)(m_kernels.Indices[i] - m_kernels.Kernels);
-		m_kernelsSSE.Indices[i] = pKernelStartAddress[nIndex];
+		m_kernelsXMM.Indices[i] = pKernelStartAddress[nIndex];
 	}
 
 	delete[] pKernelStartAddress;
@@ -437,8 +435,7 @@ void CResizeFilter::CalculateAVXFilterKernels() {
 	delete[] pKernelStartAddress;
 }
 
-void CResizeFilter::CalculateFilterParams(EFilterType eFilter)
-	{
+void CResizeFilter::CalculateFilterParams(EFilterType eFilter) {
 	if (eFilter == Filter_Upsampling_Bicubic)
 		{
 		m_dMultX = 1.0;
@@ -526,13 +523,13 @@ CResizeFilterCache::~CResizeFilterCache() {
 	}
 }
 
-const CResizeFilter& CResizeFilterCache::GetFilter(int nSourceSize, int nTargetSize, EFilterType eFilter, FilterSIMDType filterSIMDType) {
+const CResizeFilter& CResizeFilterCache::GetFilter(int nSourceSize, int nTargetSize, double dSharpen, EFilterType eFilter, FilterSIMDType filterSIMDType) {
 	CResizeFilter* pMatchingFilter = NULL;
 
 	Helpers::CAutoCriticalSection autoCriticalSection(m_csList);
 	std::list<CResizeFilter*>::iterator iter;
 	for (iter = m_filterList.begin( ); iter != m_filterList.end( ); iter++ ) {
-		if ((*iter)->ParametersMatch(nSourceSize, nTargetSize, eFilter, filterSIMDType)) {
+		if ((*iter)->ParametersMatch(nSourceSize, nTargetSize, dSharpen, eFilter, filterSIMDType)) {
 			pMatchingFilter = *iter;
 			break;
 		}
@@ -547,7 +544,7 @@ const CResizeFilter& CResizeFilterCache::GetFilter(int nSourceSize, int nTargetS
 	}
 
 	// no matching filter found, create a new one
-	CResizeFilter* pNewFilter = new CResizeFilter(nSourceSize, nTargetSize, eFilter, filterSIMDType);
+	CResizeFilter* pNewFilter = new CResizeFilter(nSourceSize, nTargetSize, dSharpen, eFilter, filterSIMDType);
 	pNewFilter->m_nRefCnt++;
 	m_filterList.push_front(pNewFilter);
 

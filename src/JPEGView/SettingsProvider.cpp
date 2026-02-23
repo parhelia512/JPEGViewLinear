@@ -86,12 +86,10 @@ CSettingsProvider::CSettingsProvider(void) {
 	m_pUserKeys = NULL;
 	m_sIniNameUser = m_sIniNameGlobal;
 	m_bStoreToEXEPath = GetBool(_T("StoreToEXEPath"), false);
-	// (Since m_bUserINIExists == false at this point, it will always read m_bStoreToEXEPath from m_sIniNameGlobal)
 
 	if (!m_bStoreToEXEPath) {
 		// User INI file
 		m_sIniNameUser = CString(Helpers::JPEGViewAppDataPath()) + m_sIniFileTitle;
-		MakeSureUserINIExists();
 		m_bUserINIExists = (::GetFileAttributes(m_sIniNameUser) != INVALID_FILE_ATTRIBUTES);
 	} else {
 		Helpers::SetJPEGViewAppDataPath(m_sEXEPath);
@@ -884,7 +882,10 @@ Helpers::EAutoZoomMode CSettingsProvider::GetAutoZoomMode(LPCTSTR sKey, Helpers:
 }
 
 LPCTSTR CSettingsProvider::GetAutoZoomModeString(Helpers::EAutoZoomMode autoZoomMode) {
-	if (autoZoomMode == Helpers::ZM_FillScreen) {
+	if (autoZoomMode == Helpers::ZM_None) {
+		return _T("None");
+	}
+	else if (autoZoomMode == Helpers::ZM_FillScreen) {
 		return _T("Fill");
 	}
 	else if (autoZoomMode == Helpers::ZM_FitToScreen) {
@@ -892,6 +893,9 @@ LPCTSTR CSettingsProvider::GetAutoZoomModeString(Helpers::EAutoZoomMode autoZoom
 	}
 	else if (autoZoomMode == Helpers::ZM_FillScreenNoZoom) {
 		return _T("FillNoZoom");
+	}
+	else if (autoZoomMode == Helpers::ZM_BookMode) {
+		return _T("BookMode");
 	}
 	return _T("FitNoZoom");
 }

@@ -326,15 +326,20 @@ namespace HelpersGUI {
 		}
 		sText += _T("\n");
 		sText += CNLS::GetString(_T("Auto zoom mode")); sText += _T(": ");
-		if (eAutoZoomMode == Helpers::ZM_FillScreen) {
+		if (eAutoZoomMode == Helpers::ZM_None) {
+			sText += CNLS::GetString(_T("None"));
+		} else if (eAutoZoomMode == Helpers::ZM_FillScreen) {
 			sText += CNLS::GetString(_T("Fill with crop"));
 		} else if (eAutoZoomMode == Helpers::ZM_FillScreenNoZoom) {
 			sText += CNLS::GetString(_T("Fill with crop (no zoom)"));
 		} else if (eAutoZoomMode == Helpers::ZM_FitToScreen) {
 			sText += CNLS::GetString(_T("Fit to screen"));
-		} else {
+		} else if (eAutoZoomMode == Helpers::ZM_FitToScreenNoZoom) {
 			sText += CNLS::GetString(_T("Fit to screen (no zoom)"));
+		} else {
+			sText += CNLS::GetString(_T("Book Mode"));
 		}
+
 		sText += _T("\n");
 		sText += CNLS::GetString(_T("Show navigation panel")); sText += _T(": ");
 		sText += bShowNavPanel ? CNLS::GetString(_T("yes")) : CNLS::GetString(_T("no"));

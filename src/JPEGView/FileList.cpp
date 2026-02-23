@@ -1002,19 +1002,6 @@ bool CFileList::TryReadingSlideShowList(const CString & sSlideShowFile) {
 //# GF: Custom public functions of linear scaling mod #
 //#####################################################
 
-void CFileList::ListFileDelete(LPCTSTR sFileName) {
-	// Delete file out of list directly without checking all files' attributes
-
-	std::list<CFileDesc>::iterator iter;
-
-	for (iter = m_fileList.begin( ); iter != m_fileList.end( ); iter++ ) {		
-		if (_tcsicmp((LPCTSTR)sFileName, iter->GetName()) == 0) {
-			iter = m_fileList.erase(iter);
-			break;
-		}
-	}
-}
-
 // Used by custom SaveBookmark()
 bool CFileList::IsEndpoint() {
 	m_nMarkedIndexShow = -1;

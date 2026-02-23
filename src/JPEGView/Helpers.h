@@ -37,10 +37,12 @@ namespace Helpers {
 
 	// Auto zoom modes
 	enum EAutoZoomMode {
+		ZM_None,
 		ZM_FitToScreenNoZoom,
 		ZM_FillScreenNoZoom,
 		ZM_FitToScreen,
-		ZM_FillScreen
+		ZM_FillScreen,
+		ZM_BookMode
 	};
 
 	// Transition effects for full screen slideshow

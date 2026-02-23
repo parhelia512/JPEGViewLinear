@@ -75,30 +75,46 @@ AllowFileDeletion=true
 ; * These options control how JPEGView looks
 ; *****************************************************************************
 
-; Language used in the user interface. Set to 'auto' to use the language of the operating system.
-; Other languages must use the ISO 639-1 language code (two letters)
-; Currently supported:
-; 'bel'   Belorussian
-; 'cs'    Czech
-; 'de'    German
-; 'el'    Greek
-; 'en'    English (default)
-; 'es'    Spanish (Spain)
-; 'es-ar' Spanish (latinoamerica)
-; 'eu'    Basque
-; 'fr'    French
-; 'it'    Italian
-; 'ja'    Japanese
-; 'ko'    Korean
-; 'pl'    Polish
-; 'pt'    Portuguese
-; 'pt-br' Portuguese (Brasil)
-; 'ro'    Romanian
-; 'ru'    Russian
-; 'sv'    Swedish
-; 'uk'    Ukrainian
-; 'zh'    Chinese
-; 'zh-tw' Chinese (Taiwan)
+; Specify language used in the user interface.
+;
+; Set to 'auto' to use the language of the operating system.
+;
+;   JPEGView will auto-detect and use the ISO 3166-1 country code (two letters) if the file exists:
+;     strings_<language>-<country>.txt
+;
+;   otherwise, fallback to just the ISO 639-1 language code if the file exists:
+;     strings_<language>.txt
+;
+; Currently supported languages:
+;  'be'    Belarusian
+;  'bg'    Bulgarian
+;  'cs'    Czech
+;  'de'    German
+;  'el'    Greek
+;  'en'    English (default)
+;  'es'    Spanish (Spain)
+;  'es-ar' Spanish (Argentina)
+;  'eu'    Basque
+;  'fi'    Finnish
+;  'fr'    French
+;  'hu'    Hungarian
+;  'it'    Italian
+;  'ja'    Japanese
+;  'ko'    Korean
+;  'pl'    Polish
+;  'pt'    Portuguese
+;  'pt-br' Portuguese (Brazil)
+;  'ro'    Romanian
+;  'ru'    Russian
+;  'sk'    Slovak
+;  'sl'    Slovenian
+;  'sr'    Serbian
+;  'sv'    Swedish
+;  'ta'    Tamil
+;  'tr'    Turkish
+;  'uk'    Ukrainian
+;  'zh'    Chinese, Simplified
+;  'zh-tw' Chinese, Traditional (Taiwan)
 Language=auto
 
 ; Background color, R G B, each component must be in [0..255], e.g. "128 128 128" for a middle gray
@@ -273,7 +289,8 @@ MinimalDisplayTime=0
 ForceGDIPlus=false
 
 ; If true, embedded ICC color profiles are used for JPEG, PNG and TIFF. This forces using GDI+ and therefore
-; results in much slower loading of JPEGs! Only set to true if you really need this.
+; results in much slower loading of images! Only set to true if you really need this.
+; (ICC color profiles are not supported for Animated PNG)
 UseEmbeddedColorProfiles=false
 
 ; -----------------------------------------------
@@ -288,10 +305,12 @@ TransparencyColor=0 0 0
 ; -----------------------------------------------
 
 ; Auto zoom mode (for window mode only if AutoZoomModeFullscreen is present)
+; None: Leave images at their original size
 ; FitNoZoom : Fit images to screen, never enlarge image
 ; FillNoZoom : Fill screen with no black borders, crop if necessary but not too much, never enlarge image
 ; Fit : Fit images to screen
 ; Fill : Fill screen with no black borders, crop if necessary
+; BookMode: Size images for (comic, manga, etc.) book reading purposes
 AutoZoomMode=FitNoZoom
 
 ; Auto zoom mode for fullscreen mode. If empty, same value as 'AutoZoomMode' is used.
@@ -332,8 +351,9 @@ Sharpen=0.3
 ; *****************************************************************************
 
 ; Default parameters for unsharp masking: Radius Amount Threshold
-; Note that no unsharp masking can be applied automatically to every image - this setting only provides the default parameters
-; when entering the unsharp mask mode
+; Note: unsharp masking cannot be applied automatically to every image
+;   This setting only provides the default parameters
+;   when entering the unsharp mask mode
 UnsharpMaskParameters=1.0 1.0 4.0
 
 ; Default parameters for controlling rotation and perspective correction
@@ -523,15 +543,15 @@ SlideShowEffectTime=250
 ; * These options control whether or not to bypass confimation dialogs
 ; *****************************************************************************
 
-; If set to true, Ctrl-S overrides the original file on disk, applying the current processings without
+; If set to true, Ctrl-S overwrites the original file on disk, applying the current processings without
 ; showing a dialog or prompting the user to confirm.
-; CAUTION: Use at your own risk! Be aware that the original image file is overridden and cannot be restored anymore!
+; CAUTION: Use at your own risk! Be aware that the original image file is overwritten and cannot be restored!
 OverwriteOriginalFileWithoutSaveDialog=false
 
-; If set to true, lossless JPEG transformations will trim the image as needed without prompting the user.
+; If set to true, lossless JPEG transformations will crop the image as needed without prompting the user.
 ; This will remove 15 pixel rows/columns at the image borders in worst case.
-; CAUTION: Use at your own risk! Be aware that the original image file is overridden and the trimmed borders cannot be restored anymore!
-TrimWithoutPromptLosslessJPEG=false
+; CAUTION: Use at your own risk! Be aware that the original image file is overwritten and the cropped borders cannot be restored!
+CropWithoutPromptLosslessJPEG=false
 
 ; Type of confirmation required when deleting a file with the 'x' button on the navigation panel
 ; Possible values: Never, OnlyWhenNoRecycleBin, Always

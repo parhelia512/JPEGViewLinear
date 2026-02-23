@@ -5,16 +5,14 @@
 
 #ifdef _WIN64
 
-CFloatImage* ApplyFilter_AVX_f32(int nSourceHeight, int nTargetHeight, int nWidth,
+CXMMImage* ApplyFilter_AVX(int nSourceHeight, int nTargetHeight, int nWidth,
 	int nStartY_FP, int nStartX, int nIncrementY_FP,
 	const AVXFilterKernelBlock& filter,
-	int nFilterOffset, const CFloatImage* pSourceImg, bool bRoundResult) {
+	int nFilterOffset, const CXMMImage* pSourceImg, bool bRoundResult) {
 
 	int nStartXAligned = nStartX & ~7;
 	int nEndXAligned = (nStartX + nWidth + 7) & ~7;
-
-
-	CFloatImage* tempImage = new CFloatImage(nEndXAligned - nStartXAligned, nTargetHeight, 8);
+	CXMMImage* tempImage = new CXMMImage(nEndXAligned - nStartXAligned, nTargetHeight, 8);
 	if (tempImage->AlignedPtr() == NULL) {
 		delete tempImage;
 		return NULL;

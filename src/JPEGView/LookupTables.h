@@ -1,6 +1,6 @@
 #pragma once
 
-// Used in "XMMImage.cpp" -> CFloatImage::CFloatImage()
+// Used in "XMMImage.cpp" -> CXMMImage::CXMMImage()
 static const unsigned short sRGB8_LinRGB12[256] = 
 	{
 	0x0000, 0x0001, 0x0002, 0x0004, 0x0005, 0x0006, 0x0007, 0x0009, 
@@ -37,7 +37,7 @@ static const unsigned short sRGB8_LinRGB12[256] =
 	0x0F04, 0x0F27, 0x0F4B, 0x0F6E, 0x0F92, 0x0FB6, 0x0FDB, 0x0FFF
 	};
 
-//Used in "BasicProcessing.cpp" -> RotateLineToDIB_1_f32() and RotateLineToDIB_f32()
+//Used in "BasicProcessing.cpp" -> RotateLineToDIB_1() and RotateLineToDIB()
 static const unsigned char LinRGB12_sRGB8[4096] = 
 	{
 	0x00, 0x01, 0x02, 0x02, 0x03, 0x04, 0x05, 0x06, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0A, 0x0B, 0x0C, 

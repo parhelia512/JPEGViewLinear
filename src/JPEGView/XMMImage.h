@@ -10,16 +10,16 @@
 // BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBxxx
 // GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGxxx
 // RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRxxx
-class CFloatImage
+class CXMMImage
 {
 public:
 	// padding is in pixels (not bytes)
-	CFloatImage(int nWidth, int nHeight, int padding);
-	CFloatImage(int nWidth, int nHeight, bool bPadHeight, int padding); // padding is in pixels (not bytes), width is always padded, height only when bPadHeight is true
+	CXMMImage(int nWidth, int nHeight, int padding);
+	CXMMImage(int nWidth, int nHeight, bool bPadHeight, int padding); // padding is in pixels (not bytes), width is always padded, height only when bPadHeight is true
 	// convert from section of 24 or 32 bpp DIB, from first to (and including) last column and row
 	// padding is in pixels(not bytes)
-	CFloatImage(int nWidth, int nHeight, int nFirstX, int nLastX, int nFirstY, int nLastY, const void* pDIB, int nChannels, int padding);
-	~CFloatImage(void);
+	CXMMImage(int nWidth, int nHeight, int nFirstX, int nLastX, int nFirstY, int nLastY, const void* pDIB, int nChannels, int padding);
+	~CXMMImage(void);
 
 	// Pointer to aligned memory of 16 bpp image
 //	void * AlignedPtr() { return m_pMemory; }

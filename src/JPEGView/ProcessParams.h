@@ -20,7 +20,7 @@ static inline EProcessingFlags SetProcessingFlag(EProcessingFlags eFlags, EProce
 
 static inline bool GetProcessingFlag(EProcessingFlags eFlags, EProcessingFlags eFlagToGet) {
 	return (eFlags & eFlagToGet) != 0;
-};
+}
 
 // Parameters for image processing, geometry independent
 class CImageProcessingParams {
@@ -149,7 +149,6 @@ public:
 	// nRotation must be 0, 90, 270 degrees, nUserRotation will be added to it
 	// dZoom is the zoom factor compared to initial image size (1.0 means no zoom)
 	// offsets are relative to center of image and refer to original image size (not zoomed)
-
 	CProcessParams(int nTargetWidth, int nTargetHeight,
 		CSize monitorSize,
 		const CRotationParams& rotationParams,
@@ -167,20 +166,7 @@ public:
 		Offsets = offsets;
 		ProcFlags = eProcFlags;
 	}
-/*
-	CProcessParams(int nTargetWidth, int nTargetHeight,
-		int nRotation,
-		double dZoom,
-		CPoint offsets,
-		EProcessingFlags eProcFlags) {
-		TargetWidth = nTargetWidth;
-		TargetHeight = nTargetHeight;
-		UserRotation = nRotation;
-		Zoom = dZoom;
-		Offsets = offsets;
-		ProcFlags = eProcFlags;
-	}
-*/
+
 	int TargetWidth;
 	int TargetHeight;
 	CSize MonitorSize;

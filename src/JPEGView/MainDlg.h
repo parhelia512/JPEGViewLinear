@@ -85,13 +85,12 @@ public:
 		MESSAGE_HANDLER(WM_IMAGE_LOAD_COMPLETED, OnImageLoadCompleted)
 		MESSAGE_HANDLER(WM_DISPLAYED_FILE_CHANGED_ON_DISK, OnDisplayedFileChangedOnDisk)
 		MESSAGE_HANDLER(WM_ACTIVE_DIRECTORY_FILELIST_CHANGED, OnActiveDirectoryFilelistChanged)
-		MESSAGE_HANDLER(WM_ANOTHER_INSTANCE_QUIT, OnAnotherInstanceStarted)
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_LOAD_FILE_ASYNCH, OnLoadFileAsynch)
+		MESSAGE_HANDLER(WM_COPYDATA, OnAnotherInstanceStarted) 
 /*GF*/	MESSAGE_HANDLER(WM_RBUTTONDBLCLK, OnRButtonDown)
 /*GF*/	MESSAGE_HANDLER(WM_MBUTTONDBLCLK, OnMButtonDown)
-/*GF*/	MESSAGE_HANDLER(WM_COPYDATA, OnCopyData)			// (for receiving file path)
 /*GF*/	MESSAGE_HANDLER(WM_REFRESHVIEW, OnRefreshView)		// (to refresh the view from another app when window is not in foreground)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
@@ -357,6 +356,7 @@ private:
 	bool PerformZoom(double dValue, bool bExponent, bool bZoomToMouse, bool bAdjustWindowToImage);
 	void ZoomToSelection();
 	double GetZoomFactorForFitToScreen(bool bFillWithCrop, bool bAllowEnlarge);
+	CProcessParams CreateProcessParams(bool bNoProcessingAfterLoad);
 	CProcessParams CreateProcessParams(bool bNoProcessingAfterLoad, bool ToPreviousImage);
 	void ResetParamsToDefault();
 	void StartSlideShowTimer(int nMilliSeconds);
@@ -392,34 +392,25 @@ private:
 /*################################################################*/
 /* Custom functions and variables of the linear scaling mod       */
 /*################################################################*/
-	double GetZoomFactorForFitToWindow();
-	// Gets the image size to be used when fitting the image to screen, either using 'fit to screen'
-	// or 'fill with crop' method. If 'fill with crop' is used, the bLimitAR can be set to avoid
-	// filling when to less pixels remain visible
-	// Outputs also the zoom factor to resize to this new size.
-	// nWidth, nHeight are the original image width and height
-	double ConditionalZoomFactor();
-
-	// If dZoom > 0: Gets the virtual image size when applying the given zoom factor
-	// If dZoom < 0: Gets the image size to fit the image to the given screen size, using the given auto zoom mode.
-	//			   dZoom is filled with the used zoom factor to resize to this new size in this case.
-	// The returned size is limited to 65535 in cx and cy
-	CSize GetVirtualImageSize();
-	WINDOWPLACEMENT m_storedWindowPlacement2;	// position for windowed mode
-	bool m_bShowInfo;
-	bool m_bShowHelp;
-	bool m_bPanTimerActive;
-	int m_nMangaSinglePageVisibleHeight;
 	HMODULE m_hmodDwmapi;
 	BOOL m_bDWMenabled;
 	typedef HRESULT (WINAPI *MyDwmIsCompositionEnabledType)(BOOL*);
 	typedef HRESULT (WINAPI *MyDwmFlushType)(void);
 	MyDwmFlushType m_DynDwmFlush;
+
+	WINDOWPLACEMENT m_storedWindowPlacement2;	// position for windowed mode
+	bool m_bShowInfo;
+	bool m_bPanTimerActive;
+	int m_nMangaSinglePageVisibleHeight;
 	bool m_bMangaMode;
 	CPoint m_offsets_custom;
-	void SaveBookmark();
-	CString ReplaceNoCase(LPCTSTR instr,LPCTSTR oldstr,LPCTSTR newstr);
+
 	void ChangeFolderLanguage();
 	void OpenDefaultEditor();
-	void ToggleFitMode();
+
+	//CSize GetVirtualImageSize();
+	//double ConditionalZoomFactor();
+	
+	CString ReplaceNoCase(LPCTSTR instr,LPCTSTR oldstr,LPCTSTR newstr);
+	void SaveBookmark();
 };
