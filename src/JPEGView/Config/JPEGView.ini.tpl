@@ -47,10 +47,17 @@ DisplayMonitor=-1
 ; CPUType can be AutoDetect, Generic, MMX, SSE or AVX2
 ; Generic should work on all CPUs, MMX needs at least MMX II (starting from PIII)
 ; Use AutoDetect to detect the best possible algorithm to use
-CPUType=AutoDetect
+; NOTE:
+;    "Generic"	Resamples in gamma space, like most other image viewers out there, so will gives wrong results.
+;				For reference: http://www.ericbrasseur.org/gamma.html 
+;    "SSE"		Resamples in linears space, for both up- and downsampling. For algorithms with negative lobes (like Catrom or Lanczos2), upsampling would be better off with a sigmoidal function.
+;    "AVX2"		This method is broken at this point in time and returns pink colored images.
+;          		Resamples in linear space, for both up- and downsampling.
+;				Only slightly faster than SSE. Bottleneck might be memory bandwidth or latency.
+CPUType=SSE
 
-; Number of CPU cores used. Set to 0 for auto detection.
-; Must be 1 to 4, or 0 for auto detect.
+; Number of CPU cores used. Must be 1 to 128, or 0 for auto detect.
+; There are diminishing returns in processing speed when going beyond 4. Memory bandwidth might be the limiting factor.
 CPUCoresUsed=0
 
 ; Editor for INI files
@@ -202,7 +209,7 @@ ScaleFactorNavPanel=1.0
 
 ; Sorting order of the files when displaying the image files in a folder
 ; Can be LastModDate, CreationDate, FileName, FileSize or Random
-FileDisplayOrder=LastModDate
+FileDisplayOrder=FileName
 
 ; Sort files ascending (increasing, e.g. A->Z, 0->9) or descending (decreasing, e.g. Z->A, 9->0)
 FileSortAscending=true
@@ -271,11 +278,12 @@ ReloadWhenDisplayedImageChanged=true
 ; Set to true to use high quality sampling as default.
 HighQualityResampling=true
 
-; DownSamplingFilter can be BestQuality, NoAliasing or Narrow
-; The BestQuality filter produces a very small amount of aliasing.
-; The NoAliasing filter is a Lanczos filter that has almost no aliasing when sharpen is set to zero
-; The Narrow filter produces quite a lot of aliasing but will sharpen much and also sharpens 100% images
-DownSamplingFilter=BestQuality
+; DownSamplingFilter can be None, Hermite, Mitchell, Catrom or Laczos2
+; Hermite (B=0, C=0)		Sharpness: 0, Ringing 0
+; Mitchell (B=1/3, C=1/3)	Sharpness: 1, Ringing 1
+; Catrom (B=0, C=0.5)		Sharpness: 2, Ringing 2
+; Lanczos2					Sharpness: 2, Ringing 2
+DownSamplingFilter=Catrom
 
 ; If true, JPEG images are auto rotated according to EXIF image orientation tag if present.
 AutoRotateEXIF=true
@@ -597,6 +605,28 @@ PrintWidth=-15.0
 ; 'metric' uses the metric system, e.g. centimeters for length
 ; 'english' uses the English/US system, e.g. inches for length
 Units=auto
+
+
+
+; *****************************************************************************
+; * New Settings
+; *
+; * These settings have been added in JPEGViewL
+; *****************************************************************************
+
+; If the image file path contains "\manga\" or "\comics\", there's different behaviour for image placement and zoom:
+; Images with these folder names in their path will
+;		- get opened in fullscreen mode on launch.
+;		- react slightly different to navigation input of 'left', 'right', 'up', 'down' arrow keys.
+;		- be focused on the top right corner (or the bottom left, going backwards), assuming RTL.
+;		- be zoomed to match window width for double pages (when image width is larger than height).
+;		- be zoomed to comply with the 'MangaSinglePageVisibleHeight' value for single pages (when image width is smaller than height).
+
+; What percentage of a book's single page height should be visible within the window. [1-100. Default: 75]
+MangaSinglePageVisibleHeight=82
+
+; Use file type icon as window icon
+TitleBarUseFileIcon=true
 
 
 

@@ -62,7 +62,7 @@ DisplayMonitor=-1
 ; MMX         Ц процессоры с поддержкой хот€ бы MMX II (Pentium III и новее)
 ; SSE         Ц Pentium III и новее
 ; AVX2        Ц процессоры с архитектурой Haswell
-CPUType=AutoDetect
+CPUType=SSE
 
 ;  оличество используемых €дер процессора. ¬озможные значени€: от 1 до 4.
 ; 0 Ц определ€ть автоматически.
@@ -190,7 +190,7 @@ WindowAlwaysOnTopOnStartup=false
 
 ; ¬ключить/отключить показ панели редактировани€
 ; при перемещении мыши в нижнюю часть экрана/окна.
-ShowBottomPanel=false
+ShowBottomPanel=true
 
 ; ¬ключить/отключить показ панели навигации.
 ShowNavPanel=true
@@ -302,12 +302,12 @@ ReloadWhenDisplayedImageChanged=true
 ; ≈сли "true", то по умолчанию используетс€ высококачественное сглаживание.
 HighQualityResampling=true
 
-; —глаживающий фильтр при уменьшении изображений. ¬озможные значени€:
-; BestQuality   Ц очень небольшое сглаживание
-; NoAliasing    Ц Lanczos-фильтр почти без сглаживани€, если резкость установлена в 0
-; Narrow        Ц достаточно сильное сглаживание, но с заметным повышением
-;                 резкости, в том числе дл€ изображений в масштабе 1:1
-DownSamplingFilter=BestQuality
+; DownSamplingFilter can be None, Hermite, Mitchell, Catrom or Laczos2
+; Hermite (B=0, C=0)		Sharpness: 0, Ringing 0
+; Mitchell (B=1/3, C=1/3)	Sharpness: 1, Ringing 1
+; Catrom (B=0, C=0.5)		Sharpness: 2, Ringing 2
+; Lanczos2					Sharpness: 2, Ringing 2
+DownSamplingFilter=Catrom
 
 ; ¬ключить/отключить автоматический поворот JPEG-изображений
 ; по тегу ориентации в EXIF (если это возможно).
@@ -679,6 +679,28 @@ PrintWidth=-15.0
 ; metric	Ц метрическа€ система (например, сантиметры дл€ длины)
 ; english	Ц английска€/американска€ система (например, дюймы дл€ длины)
 Units=auto
+
+
+
+; *****************************************************************************
+; * New Settings
+; *
+; * These settings have been added in JPEGViewL
+; *****************************************************************************
+
+; If the image file path contains "\manga\" or "\comics\", there's different behaviour for image placement and zoom:
+; Images with these folder names in their path will
+;		- get opened in fullscreen mode on launch.
+;		- react slightly different to navigation input of 'left', 'right', 'up', 'down' arrow keys.
+;		- be focused on the top right corner (or the bottom left, going backwards), assuming RTL.
+;		- be zoomed to match window width for double pages (when image width is larger than height).
+;		- be zoomed to comply with the 'MangaSinglePageVisibleHeight' value for single pages (when image width is smaller than height).
+
+; What percentage of a book's single page height should be visible within the window. [1-100. Default: 75]
+MangaSinglePageVisibleHeight=82
+
+; Use file type icon as window icon
+TitleBarUseFileIcon=true
 
 
 
