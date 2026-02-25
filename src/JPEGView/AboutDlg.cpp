@@ -24,9 +24,9 @@ static LPCTSTR GetSIMDModeString() {
 
 static CString GetReadmeFileName() {
 	// Check if there is a localized version of the readme.html file
-	CString sReadmeFileName = CNLS::GetLocalizedFileName(_T(""), _T("readme"), _T("html"), CSettingsProvider::This().Language());
+	CString sReadmeFileName = CNLS::GetLocalizedFileName(_T("doc\\"), _T("readme"), _T("html"), CSettingsProvider::This().Language());
 	if (::GetFileAttributes(CString(CSettingsProvider::This().GetEXEPath()) + sReadmeFileName) == INVALID_FILE_ATTRIBUTES) {
-		sReadmeFileName = _T("readme.html");
+		sReadmeFileName = _T("doc\\readme.html");
 	}
 	return sReadmeFileName;
 }
@@ -82,10 +82,38 @@ LRESULT CAboutDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_richEdit.SetBackgroundColor(::GetSysColor(COLOR_3DFACE));
 	m_richEdit.SetAutoURLDetect(TRUE);
 	m_richEdit.SetWindowText(CString(CNLS::GetString(_T("Licensed under the GNU general public license (GPL), see readme file for details"))) + 
-		_T(":\nfile://") + GetReadmeFileName() + _T("\n") + 
-		CNLS::GetString(_T("Project home page")) + 
-		_T(":\nhttps://github.com/sylikc/jpegview/\n"));
+		_T(": README\n\n") +
+		CNLS::GetString(_T("Home page of this fork")) +
+		_T(":\nhttps://github.com/KrokusPokus/JPEGViewL_Testing\n\n") +
+		CNLS::GetString(_T("Home page of the original project")) + 
+		_T(":\nhttps://github.com/sylikc/jpegview"));
 	m_richEdit.SetEventMask(ENM_LINK);
+
+	// From: https://github.com/aviscaerulea/jpegview-nt.git
+	// "README" ????????????
+	FINDTEXT ft;
+	ft.chrg.cpMin = 0;
+	ft.chrg.cpMax = -1;
+	ft.lpstrText = _T("README");
+	LRESULT pos = m_richEdit.SendMessage(EM_FINDTEXT, FR_DOWN, (LPARAM)&ft);
+	if (pos != -1) {
+		CHARRANGE cr;
+		cr.cpMin = (LONG)pos;
+		cr.cpMax = (LONG)pos + (LONG)_tcslen(_T("README"));
+		m_richEdit.SendMessage(EM_EXSETSEL, 0, (LPARAM)&cr);
+
+		CHARFORMAT2 cf;
+		memset(&cf, 0, sizeof(cf));
+		cf.cbSize = sizeof(CHARFORMAT2);
+		cf.dwMask = CFM_LINK;
+		cf.dwEffects = CFE_LINK;
+		m_richEdit.SendMessage(EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+
+		// ?????
+		cr.cpMin = 0;
+		cr.cpMax = 0;
+		m_richEdit.SendMessage(EM_EXSETSEL, 0, (LPARAM)&cr);
+	}
 
 	HICON hIconLarge = (HICON)::LoadImage(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDR_MAINFRAME),
 		IMAGE_ICON, 64, 64, LR_DEFAULTCOLOR | LR_SHARED);
@@ -111,8 +139,13 @@ LRESULT CAboutDlg::OnLinkClicked(WPARAM wParam, LPNMHDR lpnmhdr, BOOL& bHandled)
 		TCHAR* pTextLink = new TCHAR[nLen + 1];
 		m_richEdit.GetTextRange(pLink->chrg.cpMin, pLink->chrg.cpMax, pTextLink);
 		CString sReadmeFileName = GetReadmeFileName();
-		if (_tcsstr(pTextLink, sReadmeFileName) != NULL) {
-			::ShellExecute(m_hWnd, _T("open"), CString(CSettingsProvider::This().GetEXEPath()) + _T("\\") + sReadmeFileName, 
+		if (_tcscmp(pTextLink, _T("README")) == 0) {
+			// From: https://github.com/aviscaerulea/jpegview-nt.git
+			// README ??????? readme.html ???
+			::ShellExecute(m_hWnd, _T("open"), CString(CSettingsProvider::This().GetEXEPath()) + _T("\\") + sReadmeFileName,
+				NULL, CSettingsProvider::This().GetEXEPath(), SW_SHOW);
+		} else if (_tcsstr(pTextLink, sReadmeFileName) != NULL) {
+			::ShellExecute(m_hWnd, _T("open"), CString(CSettingsProvider::This().GetEXEPath()) + _T("\\") + sReadmeFileName,
 				NULL, CSettingsProvider::This().GetEXEPath(), SW_SHOW);
 		} else {
 			::ShellExecute(m_hWnd, _T("open"), pTextLink, NULL, NULL, SW_SHOW);

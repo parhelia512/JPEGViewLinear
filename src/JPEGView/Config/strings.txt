@@ -161,6 +161,8 @@ Goto previous image
 Height	
 Hide histogram	
 High quality resampling	
+Home page of the original project	
+Home page of this fork
 Hour / Minute (as numbers)	
 ISO Speed:	
 Image Pixels	
@@ -261,7 +263,6 @@ Print
 Print Image	
 Printer driver	
 Printer:	
-Project home page	
 Radius	
 Random	
 Reading the JPEG file from disk failed	

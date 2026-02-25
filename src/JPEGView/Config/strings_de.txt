@@ -159,6 +159,8 @@ Goto previous image	Voriges Bild anzeigen
 Height	Höhe
 Hide histogram	Histogramm ausblenden
 High quality resampling	
+Home page of the original project	Home Page des ursprünglichen Projekts
+Home page of this fork	Home Page dieses Forks
 Hour / Minute (as numbers)	Stunde / Minute (als Zahl)
 ISO Speed:	ISO-Wert:
 Image Pixels	Originalbild-Pixel
@@ -259,7 +261,6 @@ Print	Drucken
 Print Image	Bild drucken
 Printer driver	Druckertreiber
 Printer:	Drucker:
-Project home page	Projekt Home Page
 Radius	
 Random	Zufällig
 Reading the JPEG file from disk failed	JPEG-Datei konnte nicht gelesen werden
