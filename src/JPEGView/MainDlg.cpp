@@ -261,7 +261,7 @@ CMainDlg::CMainDlg(bool bForceFullScreen) {
 	m_startMouse.x = m_startMouse.y = -1;
 	m_virtualImageSize = CSize(-1, -1);
 	m_bInZooming = false;
-	m_bTemporaryLowQ = false;
+	m_bTemporaryLowQ = false;	// launch with LowQ, but set timer at the end of OnPaint
 	m_bShowZoomFactor = false;
 	m_bSpanVirtualDesktop = false;
 	m_bPanMouseCursorSet = false;
@@ -297,7 +297,6 @@ CMainDlg::CMainDlg(bool bForceFullScreen) {
 	m_pKeyMap = new CKeyMap(); // routine to load the keymap, it's not as simple as just loading one file anymore, but all logic handled by CKeyMap
 	m_pPrintImage = new CPrintImage(CSettingsProvider::This().PrintMargin(), CSettingsProvider::This().DefaultPrintWidth());
 	m_pHelpDlg = NULL;
-/*GF*/	m_bBookPageMode = false;
 /*GF*/	m_nBookPageVisibleHeight = sp.BookPageVisibleHeight();
 /*GF*/	m_bShowInfo = false;
 /*GF*/	m_offsets_custom = CPoint(0, 0);
@@ -378,15 +377,18 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 		0, m_eForcedSorting != Helpers::FS_Undefined);
 	m_pFileList->SetNavigationMode(sp.Navigation());
 
-	TCHAR sCurrentFileName[MAX_PATH];
-	lstrcpy(sCurrentFileName,m_pFileList->Current());
-
-	// Note: With AutoFullScreen enabled, m_bFullScreenMode will be "false" at this point.
-	if (sCurrentFileName != NULL) {
-		if (1 /*sp.AutoFullScreen() == true*/) {
-			if (StrStrI(sCurrentFileName,TEXT("\\manga\\")) || StrStrI(sCurrentFileName,TEXT("\\comics\\")))
-				m_bFullScreenMode = true;
+/*GF*/	TCHAR debugtext[512];
+	// Note: With AutoFullScreen enabled, m_bFullScreenMode would be "false" at this point.
+	if (m_pFileList->Current() != NULL) {
+		TCHAR sCurrentFileName[MAX_PATH];
+		lstrcpy(sCurrentFileName, m_pFileList->Current());
+		if (StrStrI(sCurrentFileName,TEXT("\\manga\\")) || StrStrI(sCurrentFileName,TEXT("\\comics\\"))) {
+			m_bFullScreenMode = true;
+			m_eAutoZoomModeFullscreen = Helpers::ZM_BookMode;
+			m_eAutoZoomModeWindowed = Helpers::ZM_BookMode;
 		}
+/*GF*/	swprintf(debugtext,255,TEXT("m_pFileList->Current() = %s"), m_pFileList->Current());
+/*GF*/	::OutputDebugStringW(debugtext);
 	} else {
 	   m_bFullScreenMode = false;
 	}
@@ -394,7 +396,6 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_clientRect = m_bFullScreenMode ? m_monitorRect : CMultiMonitorSupport::GetDefaultClientRectInWindowMode(sp.AutoFullScreen());
 
 // Note: With AutoFullScreen, m_clientRect will be monitorRect even when m_bFullScreenMode==0
-/*GF*/	TCHAR debugtext[512];
 /*GF*/	swprintf(debugtext,255,TEXT("OnInitDialog() m_bFullScreenMode = %d  AutoFullScreen = %d m_clientRect.Width=%d m_clientRect.Height=%d"), m_bFullScreenMode, sp.AutoFullScreen(), m_clientRect.Width(), m_clientRect.Height());
 /*GF*/	::OutputDebugStringW(debugtext);
 
@@ -494,6 +495,8 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	this->DragAcceptFiles();
 
+	StartLowQTimer(ZOOM_TIMEOUT);	// We start out in low quality scaling to get something on the screen asap. Set timer to repaint properly.
+	
 	return TRUE;
 }
 
@@ -1098,7 +1101,7 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 			// OR go to previous/next image (if image smaller)
 			if (m_pCurrentImage != NULL) {
 				if (nDelta < 0) {
-					if (m_bBookPageMode == true) {
+					if (GetAutoZoomMode() == Helpers::ZM_BookMode) {
 						if (PerformPan(0, -PAN_STEP, false) == true) {
 							this->Invalidate(FALSE);
 						}
@@ -1114,7 +1117,7 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 					}
 				}
 				else if (nDelta > 0) {
-					if (m_bBookPageMode == true) {
+					if (GetAutoZoomMode() == Helpers::ZM_BookMode) {
 						if (PerformPan(0, PAN_STEP, false) == true) {
 							this->Invalidate(FALSE);
 						}
@@ -1383,7 +1386,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 						iRealHeight = INT (m_dZoom * (m_pCurrentImage->OrigHeight()));
 						iRealWidth = INT (m_dZoom * (m_pCurrentImage->OrigWidth()));
 
-						if ((iRealHeight > m_clientRect.Height()) && (iRealWidth <= m_clientRect.Width()) && (m_bBookPageMode == true))
+						if ((iRealHeight > m_clientRect.Height()) && (iRealWidth <= m_clientRect.Width()) && (GetAutoZoomMode() == Helpers::ZM_BookMode))
 							{
 							if (((bLeft == true) && (bRight == false)) || ((bUp == true) && (bDown == false)))
 								PanYbase = 10;
@@ -1468,7 +1471,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 						if (modu < modu_old)
 							{
 							//PanY ist die Pixelzahl des gezoomten bildes!
-							if (m_bBookPageMode == false)
+							if (GetAutoZoomMode() != Helpers::ZM_BookMode)
 								{
 								if ((bUp == true) && (bDown == false))
 									PanY = 10;
@@ -2237,6 +2240,7 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 						defaultWindowRect.Size(),
 						dZoom, m_pCurrentImage, false, true, m_bWindowBorderless, GetAutoZoomMode());
 				this->SetWindowPos(HWND_TOP, windowRect.left, windowRect.top, windowRect.Width(), windowRect.Height(), SWP_NOZORDER | SWP_NOCOPYBITS);
+				UpdateWindowTitle(true);	// force update of title bar icon
 				this->MouseOn();
 				m_bSpanVirtualDesktop = false;
 			} else {
@@ -3478,7 +3482,10 @@ bool CMainDlg::PerformZoom(double dValue, bool bExponent, bool bZoomToMouse, boo
 		if (bAdjustWindowToImage) {
 			AdjustWindowToImage(false);
 		}
-		if ((m_bBookPageMode == true) && (m_bZoomMode == false)) {
+
+		// Recalculate the new m_nBookPageVisibleHeight based on the current zoom m_dZoom
+		// Todo: Save changes to user ini
+		if ((GetAutoZoomMode() == Helpers::ZM_BookMode) && (m_bZoomMode == false)) {
 			int nImageW = m_pCurrentImage->OrigWidth();
 			int nImageH = m_pCurrentImage->OrigHeight();
 			int nWinW = m_clientRect.Width();
@@ -3595,8 +3602,9 @@ CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool T
 	LPCTSTR sCurrentFileName = CurrentFileName(false);
 	if (sCurrentFileName != NULL) {
 		if ((StrStrI(sCurrentFileName,TEXT("\\manga\\"))) || (StrStrI(sCurrentFileName,TEXT("\\comics\\")))) {
-			m_bBookPageMode = true;
-
+			m_eAutoZoomModeFullscreen = Helpers::ZM_BookMode;
+			m_eAutoZoomModeWindowed = Helpers::ZM_BookMode;
+			::OutputDebugStringW(_T("CreateProcessParams() BookPageMode = true"));
 			if (ToPreviousImage == false)
 				m_offsets = CPoint(-65000,65000);	// Book page RTL manga mode: focus top right (RTL). TODO: implement LTR option.
 			else
@@ -3604,7 +3612,7 @@ CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool T
 
 			m_offsets_custom = m_offsets;
 		} else {
-			m_bBookPageMode = false;
+			::OutputDebugStringW(_T("CreateProcessParams() BookPageMode = false"));
 			m_offsets = CPoint(0,0);		// image mode: focus image center
 			m_offsets_custom = m_offsets;
 		}

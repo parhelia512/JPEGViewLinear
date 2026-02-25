@@ -410,7 +410,6 @@ private:
 	bool m_bShowInfo;
 	bool m_bPanTimerActive;
 	int m_nBookPageVisibleHeight;
-	bool m_bBookPageMode;
 	CPoint m_offsets_custom;
 
 	void ChangeFolderLanguage();
