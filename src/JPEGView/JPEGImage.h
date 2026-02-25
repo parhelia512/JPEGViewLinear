@@ -35,6 +35,9 @@ public:
 	CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, int nChannels, 
 		__int64 nJPEGHash, EImageFormat eImageFormat, bool bIsAnimation, int nFrameIndex, int nNumberOfFrames, int nFrameTimeMs,
 		CLocalDensityCorr* pLDC = NULL, bool bIsThumbnailImage = false, CRawMetadata* pRawMetadata = NULL);
+	CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, int nChannels,
+		__int64 nJPEGHash, EImageFormat eImageFormat, EImageFormat eContainerFormat = IF_Unknown, bool bIsAnimation = false, int nFrameIndex = 9, int nNumberOfFrames = 1, int nFrameTimeMs = 0,
+		CLocalDensityCorr* pLDC = NULL, bool bIsThumbnailImage = false, CRawMetadata* pRawMetadata = NULL);
 	~CJPEGImage(void);
 
 	// Gets resampled and processed 32 bpp DIB image (up or downsampled).
@@ -287,6 +290,11 @@ public:
 	// Gets the image format this image has originally
 	EImageFormat GetImageFormat() const { return m_eImageFormat; }
 
+	// Gets the container format of this image; IF_Unknown is not
+	EImageFormat GetContainerFormat() const { return m_eContainerFormat; }
+	bool IsContainer() const { return m_eContainerFormat != IF_Unknown; }
+	bool ContainerHasMultipleImages() const { return (m_eContainerFormat != IF_Unknown) && (m_nNumberOfFrames > 1); }
+
 	// Gets if the image format is one of the formats supported by GDI+
 	bool IsGDIPlusFormat() const {
 		return m_eImageFormat == IF_JPEG || m_eImageFormat == IF_WindowsBMP || m_eImageFormat == IF_PNG || m_eImageFormat == IF_TIFF || m_eImageFormat == IF_GIF;
@@ -358,7 +366,7 @@ private:
 	int m_nInitOrigWidth, m_nInitOrigHeight; // original width of image when constructed (before any rotation and crop)
 	int m_nOriginalChannels;
 	__int64 m_nPixelHash;
-	EImageFormat m_eImageFormat;
+	EImageFormat m_eImageFormat, m_eContainerFormat;
 	TJSAMP m_eJPEGChromoSampling;
 
 	// multiframe and GIF animation related data

@@ -297,8 +297,8 @@ CMainDlg::CMainDlg(bool bForceFullScreen) {
 	m_pKeyMap = new CKeyMap(); // routine to load the keymap, it's not as simple as just loading one file anymore, but all logic handled by CKeyMap
 	m_pPrintImage = new CPrintImage(CSettingsProvider::This().PrintMargin(), CSettingsProvider::This().DefaultPrintWidth());
 	m_pHelpDlg = NULL;
-/*GF*/	m_bMangaMode = false;
-/*GF*/	m_nMangaSinglePageVisibleHeight = sp.MangaSinglePageVisibleHeight();
+/*GF*/	m_bBookPageMode = false;
+/*GF*/	m_nBookPageVisibleHeight = sp.BookPageVisibleHeight();
 /*GF*/	m_bShowInfo = false;
 /*GF*/	m_offsets_custom = CPoint(0, 0);
 /*GF*/	memset(&m_storedWindowPlacement2, 0, sizeof(WINDOWPLACEMENT));
@@ -828,7 +828,7 @@ LRESULT CMainDlg::OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& 
 	m_nMouseX = m_nMouseY = -1;
 
 	double dOldZoom = m_dZoom;
-	m_dZoom = ConditionalZoomFactor();
+	m_dZoom = GetUpdatedZoomFactor();
 	if (abs(m_dZoom - dOldZoom) > 0)
 		{
 		m_bInZooming = true;
@@ -1017,7 +1017,7 @@ LRESULT CMainDlg::OnLButtonDblClk(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPara
 		CSize sizeAutoZoom = Helpers::GetVirtualImageSize(m_pCurrentImage->OrigSize(),
 			m_clientRect.Size(), IsAdjustWindowToImage() ? Helpers::ZM_FitToScreenNoZoom : GetAutoZoomMode(), dZoom);
 		if (sizeAutoZoom != m_virtualImageSize) {
-			ExecuteCommand(GetAutoZoomMode() * 10 + IDM_AUTO_ZOOM_FIT_NO_ZOOM);
+			ExecuteCommand(GetAutoZoomMode() * 10 + IDM_AUTO_ZOOM_NONE);
 		} else {
 			ResetZoomTo100Percents(true);
 		}
@@ -1098,7 +1098,7 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 			// OR go to previous/next image (if image smaller)
 			if (m_pCurrentImage != NULL) {
 				if (nDelta < 0) {
-					if (m_bMangaMode == true) {
+					if (m_bBookPageMode == true) {
 						if (PerformPan(0, -PAN_STEP, false) == true) {
 							this->Invalidate(FALSE);
 						}
@@ -1114,7 +1114,7 @@ LRESULT CMainDlg::OnMouseWheel(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, 
 					}
 				}
 				else if (nDelta > 0) {
-					if (m_bMangaMode == true) {
+					if (m_bBookPageMode == true) {
 						if (PerformPan(0, PAN_STEP, false) == true) {
 							this->Invalidate(FALSE);
 						}
@@ -1195,6 +1195,7 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 		bHandled = true;
 		m_pFileList->SetNavigationMode(Helpers::NM_LoopSubDirectories);
 		GotoImage(POS_Next);
+/*
 	} else if (wParam >= '1' && wParam <= '9' && (!bShift || bCtrl)) {
 		// Start the slideshow
 		bHandled = true;
@@ -1207,6 +1208,7 @@ LRESULT CMainDlg::OnKeyDown(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /
 			nValue *= 1000; // seconds
 		}
 		StartMovieMode(1000.0/nValue);
+*/
 	} else if (wParam == VK_F1) {
 		bHandled = true;
 		ExecuteCommand(IDM_HELP);
@@ -1381,7 +1383,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 						iRealHeight = INT (m_dZoom * (m_pCurrentImage->OrigHeight()));
 						iRealWidth = INT (m_dZoom * (m_pCurrentImage->OrigWidth()));
 
-						if ((iRealHeight > m_clientRect.Height()) && (iRealWidth <= m_clientRect.Width()) && (m_bMangaMode == true))
+						if ((iRealHeight > m_clientRect.Height()) && (iRealWidth <= m_clientRect.Width()) && (m_bBookPageMode == true))
 							{
 							if (((bLeft == true) && (bRight == false)) || ((bUp == true) && (bDown == false)))
 								PanYbase = 10;
@@ -1466,7 +1468,7 @@ LRESULT CMainDlg::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 						if (modu < modu_old)
 							{
 							//PanY ist die Pixelzahl des gezoomten bildes!
-							if (m_bMangaMode == false)
+							if (m_bBookPageMode == false)
 								{
 								if ((bUp == true) && (bDown == false))
 									PanY = 10;
@@ -1615,7 +1617,7 @@ LRESULT CMainDlg::OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 	if (m_bAlwaysOnTop) ::CheckMenuItem(hMenuZoom, IDM_ALWAYS_ON_TOP, MF_CHECKED);
 	if (IsAdjustWindowToImage() && IsImageExactlyFittingWindow()) ::CheckMenuItem(hMenuZoom, IDM_FIT_WINDOW_TO_IMAGE, MF_CHECKED);
 	HMENU hMenuAutoZoomMode = ::GetSubMenu(hMenuTrackPopup, SUBMENU_POS_AUTOZOOMMODE);
-	::CheckMenuItem(hMenuAutoZoomMode, GetAutoZoomMode() * 10 + IDM_AUTO_ZOOM_FIT_NO_ZOOM, MF_CHECKED);
+	::CheckMenuItem(hMenuAutoZoomMode, GetAutoZoomMode() * 10 + IDM_AUTO_ZOOM_NONE, MF_CHECKED);
 	HMENU hMenuSettings = ::GetSubMenu(hMenuTrackPopup, SUBMENU_POS_SETTINGS);
 	HMENU hMenuModDate = ::GetSubMenu(hMenuTrackPopup, SUBMENU_POS_MODDATE);
 	HMENU hMenuUserCommands = ::GetSubMenu(hMenuTrackPopup, SUBMENU_POS_USER_COMMANDS);
@@ -1909,10 +1911,17 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 
 			break;
 		case IDM_NEXT:
-			GotoImage(POS_Next);
+			if (!m_pCurrentImage || !m_pCurrentImage->ContainerHasMultipleImages())
+				GotoImage(POS_Next);
+			else
+				GotoImage(POS_Next_Image);
 			break;
 		case IDM_PREV:
-			GotoImage(POS_Previous);
+			if (!m_pCurrentImage || !m_pCurrentImage->ContainerHasMultipleImages())
+				GotoImage(POS_Previous);
+			else
+				GotoImage(POS_Previous_Image);
+			break;
 			break;
 		case IDM_FIRST:
 			GotoImage(POS_First);
@@ -2184,6 +2193,9 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 		case IDM_TOGGLE_FILL_WITH_CROP_100_PERCENTS:
 			if (fabs(m_dZoom - 1) < 0.01) {
 				ResetZoomToFitScreen(nCommand == IDM_TOGGLE_FILL_WITH_CROP_100_PERCENTS, true, true);
+				// ResetToFit does not usually show timer. In this zoom-in case let¡¯s show it.
+				m_bInZooming = true;
+				StartLowQTimer(ZOOM_TIMEOUT);
 			} else {
 				ResetZoomTo100Percents(m_bMouseOn);
 			}
@@ -2223,7 +2235,7 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 						m_hWnd,
 						CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT),
 						defaultWindowRect.Size(),
-						dZoom, m_pCurrentImage, false, true, m_bWindowBorderless);
+						dZoom, m_pCurrentImage, false, true, m_bWindowBorderless, GetAutoZoomMode());
 				this->SetWindowPos(HWND_TOP, windowRect.left, windowRect.top, windowRect.Width(), windowRect.Height(), SWP_NOZORDER | SWP_NOCOPYBITS);
 				this->MouseOn();
 				m_bSpanVirtualDesktop = false;
@@ -2259,7 +2271,7 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 				int windowCaptionHeight = Helpers::GetWindowCaptionSize();
 				double dZoom = -1;
 				CRect windowRect = Helpers::GetWindowRectMatchingImageSize(
-					m_hWnd, CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT), HUGE_SIZE, dZoom, m_pCurrentImage, false, true, m_bWindowBorderless);
+					m_hWnd, CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT), HUGE_SIZE, dZoom, m_pCurrentImage, false, true, m_bWindowBorderless, GetAutoZoomMode());
 
 				// don't try to adjust for an image that isn't loaded!
 				if (m_pCurrentImage != NULL)
@@ -2336,13 +2348,14 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 		case IDM_AUTO_ZOOM_FILL:
 		case IDM_AUTO_ZOOM_BOOK_MODE:
 			{
-				Helpers::EAutoZoomMode eAutoZoomMode = (Helpers::EAutoZoomMode)((nCommand - IDM_AUTO_ZOOM_FIT_NO_ZOOM) / 10);
+				Helpers::EAutoZoomMode eAutoZoomMode = (Helpers::EAutoZoomMode)((nCommand - IDM_AUTO_ZOOM_NONE) / 10);
 				if (m_eAutoZoomModeFullscreen == m_eAutoZoomModeWindowed)
 					m_eAutoZoomModeFullscreen = m_eAutoZoomModeWindowed = eAutoZoomMode;
 				else if (m_bFullScreenMode)
 					m_eAutoZoomModeFullscreen = eAutoZoomMode;
 				else
 					m_eAutoZoomModeWindowed = eAutoZoomMode;
+
 				m_dZoom = -1.0;
 				m_offsets = CPoint(0, 0);
 				this->Invalidate(FALSE);
@@ -3079,6 +3092,77 @@ void CMainDlg::GotoImage(EImagePosition ePos, int nFlags) {
 
 	m_pCropCtl->CancelCropping(); // cancel any running crop
 
+	if (m_pCurrentImage && m_pCurrentImage->ContainerHasMultipleImages()
+		&& ((ePos == POS_Next_Image) || (ePos == POS_Previous_Image)
+			|| (ePos == POS_Next_100) || (ePos == POS_Previous_100) || (ePos == POS_Goto_Image_Num)))
+	{
+		int numFrames = m_pCurrentImage->NumberOfFrames();
+		if (numFrames <= 1) return;
+		int nLastFrameIndex = m_pCurrentImage->FrameIndex();
+		int nFrameIndex;
+
+		if (ePos != POS_Goto_Image_Num)
+		{
+			int inc = ((ePos == POS_Next_100) || (ePos == POS_Previous_100)) ? 100 : 1;
+			if ((ePos == POS_Previous_Image) || (ePos == POS_Previous_100))
+				inc = -inc;
+			nFrameIndex = nLastFrameIndex + inc;
+		}
+		else
+		{
+			nFrameIndex = nFlags;
+		}
+		if (nFrameIndex >= numFrames)
+			nFrameIndex = numFrames - 1;
+		if  (nFrameIndex < 0)
+			nFrameIndex = 0;
+		bool bExitArchive = false;
+		if (nLastFrameIndex == nFrameIndex)
+		{
+			if (((ePos == POS_Next_Image) || (ePos == POS_Previous_Image))
+				&& ((nFrameIndex == (numFrames - 1)) || (nFrameIndex == 0)))
+			{
+				if (ePos == POS_Next_Image)
+					ePos = POS_Next;
+				else
+					ePos = POS_Previous;
+				bExitArchive = true; //exit archive when at 1st or last image and will land on same image again
+			}
+			 else return; //no change
+		}
+		if (!bExitArchive) //proceed with moving to another image in archive
+		{
+			if (nFlags & KEEP_PARAMETERS) {
+				if (!(m_bUserZoom || IsAdjustWindowToImage())) {
+					m_dZoom = -1;
+				}
+			}
+			else {
+				InitParametersForNewImage();
+			}
+			m_pJPEGProvider->NotifyNotUsed(m_pCurrentImage);
+			CProcessParams procParams = CreateProcessParams(false);
+			if (nFlags & KEEP_PARAMETERS) {
+				procParams.ProcFlags = SetProcessingFlag(procParams.ProcFlags, PFLAG_KeepParams, true);
+			}
+			m_pCurrentImage = m_pJPEGProvider->RequestImage(m_pFileList, CJPEGProvider::NONE,
+				m_pFileList->Current(), nFrameIndex, procParams,
+				m_bOutOfMemoryLastImage, m_bExceptionErrorLastImage);
+			m_nLastLoadError = (m_pCurrentImage == NULL) ? ((m_pFileList->Current() == NULL) ? HelpersGUI::FileLoad_NoFilesInDirectory : HelpersGUI::FileLoad_LoadError) : HelpersGUI::FileLoad_Ok;
+
+			if (m_pCurrentImage)
+			{
+				if ((nFlags & NO_UPDATE_WINDOW) == 0) {
+					this->Invalidate(FALSE);
+					// this will force to wait until really redrawn, preventing to process images but do not show them
+					this->UpdateWindow();
+				}
+			}
+
+			return;
+		}
+	}
+
 	// solving a specific "edge" case, pun intended
 	// (doesn't happen with first image, because we would be at frame 0 already)
 	// if wraparound = false,
@@ -3141,6 +3225,11 @@ void CMainDlg::GotoImage(EImagePosition ePos, int nFlags) {
 		if (m_bMovieMode && m_bAutoExit) {
 			CleanupAndTerminate();
 		} else {
+/* Debugging */	TCHAR debugtext[1024];
+/* Debugging */	swprintf(debugtext,255,TEXT("CMainDlg::GotoImage(ePos=%d, nFlags=%d) Calculated new frame index is the same as the old frame index: %d. Nothing to do."), ePos, nFlags, nFrameIndex);
+/* Debugging */	::OutputDebugStringW(debugtext);
+/*
+			::OutputDebugStringW(_T("owwwy"));
 			if (CSettingsProvider::This().FlashWindowAlert()) {
 				// Flash window to notify user
 				FlashWindow(TRUE);  // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-flashwindow
@@ -3150,7 +3239,7 @@ void CMainDlg::GotoImage(EImagePosition ePos, int nFlags) {
 				// Use the system's default beep sound
 				MessageBeep(0xFFFFFFFF);  // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebeep
 			}
-
+*/
 			return; // not placed on a new image, don't do anything
 		}
 	}
@@ -3190,7 +3279,7 @@ void CMainDlg::GotoImage(EImagePosition ePos, int nFlags) {
 			m_nLastLoadError = HelpersGUI::FileLoad_PasteFromClipboardFailed;
 		}
 	} else {
-    	if (ePos == POS_Previous) // Important for offsets for Manga (Bottom Left vs Top Right)
+    	if (ePos == POS_Previous) // Important for offsets for BookPage mode (Bottom Left vs Top Right)
     		m_pCurrentImage = m_pJPEGProvider->RequestImage(m_pFileList, (ePos == POS_AwayFromCurrent) ? CJPEGProvider::NONE : eDirection,
     			m_pFileList->Current(), nFrameIndex, CreateProcessParams(false, true),
     			m_bOutOfMemoryLastImage, m_bExceptionErrorLastImage);
@@ -3298,7 +3387,7 @@ bool CMainDlg::PerformZoom(double dValue, bool bExponent, bool bZoomToMouse, boo
 /* Debugging */	::OutputDebugStringW(TEXT("Image zoomed size close to image real size -> Use real size -> Setting m_dZoom=1.0"));
 		m_dZoom = 1.0;
 	} else { // Special case 2: Image zoomed size close to ZoomToWindow size -> Use ZoomToWindow size
-		double dZoomWindow = GetZoomFactorForFitToScreen(false, false); 	// old custom: GetZoomFactorForFitToWindow();
+		double dZoomWindow = GetZoomFactorForFitToScreen(false, false);
 /* Debugging */	swprintf(debugtext,255,TEXT("old: %f  new: %f  GetZoomFactorForFitToScreen: %f"), dOldZoom, m_dZoom, dZoomWindow);
 /* Debugging */	::OutputDebugStringW(debugtext);
 		if (abs(dZoomWindow - 1.0) < 0.05) {
@@ -3389,7 +3478,7 @@ bool CMainDlg::PerformZoom(double dValue, bool bExponent, bool bZoomToMouse, boo
 		if (bAdjustWindowToImage) {
 			AdjustWindowToImage(false);
 		}
-		if ((m_bMangaMode == true) && (m_bZoomMode == false)) {
+		if ((m_bBookPageMode == true) && (m_bZoomMode == false)) {
 			int nImageW = m_pCurrentImage->OrigWidth();
 			int nImageH = m_pCurrentImage->OrigHeight();
 			int nWinW = m_clientRect.Width();
@@ -3398,7 +3487,7 @@ bool CMainDlg::PerformZoom(double dValue, bool bExponent, bool bZoomToMouse, boo
 			double dImageAR = (double)nImageW/nImageH;
 			if (dImageAR < 1.0) {		// single page
 				if (((nImageW * m_dZoom) <= nWinW) && ((nImageH * m_dZoom) >= nWinH)) {
-					m_nMangaSinglePageVisibleHeight = (int)((nWinH / (nImageH * m_dZoom)) * 100);
+					m_nBookPageVisibleHeight = (int)((nWinH / (nImageH * m_dZoom)) * 100);
 				}
 			}
 		}
@@ -3443,7 +3532,7 @@ double CMainDlg::GetZoomFactorForFitToScreen(bool bFillWithCrop, bool bAllowEnla
 	if (m_pCurrentImage != NULL) {
 		double dZoom;
 		Helpers::GetImageRect(m_pCurrentImage->OrigWidth(), m_pCurrentImage->OrigHeight(), 
-			m_clientRect.Width(), m_clientRect.Height(), true, bFillWithCrop, false, dZoom);
+			m_clientRect.Width(), m_clientRect.Height(), true, bFillWithCrop, false, GetAutoZoomMode(), dZoom);
 		double dZoomMax = bAllowEnlarge ? Helpers::ZoomMax : max(1.0, m_dZoomAtResizeStart);
 		return max(0.0001, min(dZoomMax, dZoom));
 	} else {
@@ -3456,7 +3545,7 @@ void CMainDlg::ResetZoomToFitScreen(bool bFillWithCrop, bool bAllowEnlarge, bool
 	if (m_pCurrentImage != NULL) {
 		if (bAdjustWindowSize && !m_bFullScreenMode && !IsZoomed() && m_bAutoFitWndToImage) {
 			m_dZoom = bAllowEnlarge ? Helpers::ZoomMax : 1;
-			CRect wndRect = Helpers::GetWindowRectMatchingImageSize(m_hWnd, CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT), HUGE_SIZE, m_dZoom, m_pCurrentImage, false, true, m_bWindowBorderless);
+			CRect wndRect = Helpers::GetWindowRectMatchingImageSize(m_hWnd, CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT), HUGE_SIZE, m_dZoom, m_pCurrentImage, false, true, m_bWindowBorderless, GetAutoZoomMode());
 			if (m_dZoom <= 1) {
 				m_dZoom = -1;
 			}
@@ -3502,20 +3591,20 @@ CProcessParams CMainDlg::CreateProcessParams(bool bNoProcessingAfterLoad, bool T
 		nClientHeight = rect.Height();
 	}
 
-	// [GF] Fix m_offsets & m_bZoomMode for MangaMode
+	// [GF] Fix m_offsets & m_bZoomMode for BookPageMode
 	LPCTSTR sCurrentFileName = CurrentFileName(false);
 	if (sCurrentFileName != NULL) {
 		if ((StrStrI(sCurrentFileName,TEXT("\\manga\\"))) || (StrStrI(sCurrentFileName,TEXT("\\comics\\")))) {
-			m_bMangaMode = true;
+			m_bBookPageMode = true;
 
 			if (ToPreviousImage == false)
-				m_offsets = CPoint(-65000,65000);	// comic/manga mode: focus top right (RTL). TODO: implement LTR option.
+				m_offsets = CPoint(-65000,65000);	// Book page RTL manga mode: focus top right (RTL). TODO: implement LTR option.
 			else
-				m_offsets = CPoint(65000,-65000);	// comic/manga mode: focus bottom left (RTL). TODO: implement LTR option.
+				m_offsets = CPoint(65000,-65000);	// Book page RTL mode: focus bottom left (RTL). TODO: implement LTR option.
 
 			m_offsets_custom = m_offsets;
 		} else {
-			m_bMangaMode = false;
+			m_bBookPageMode = false;
 			m_offsets = CPoint(0,0);		// image mode: focus image center
 			m_offsets_custom = m_offsets;
 		}
@@ -3767,7 +3856,7 @@ void CMainDlg::AdjustWindowToImage(bool bAfterStartup) {
 	if (IsAdjustWindowToImage() && (m_pCurrentImage != NULL || bAfterStartup)) {
 		// window size shall be adjusted to image size (at least keep aspect ratio)
 		double dZoom = m_dZoom;
-		CRect windowRect = Helpers::GetWindowRectMatchingImageSize(m_hWnd, CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT), HUGE_SIZE, dZoom, m_pCurrentImage, bAfterStartup, dZoom < 0, m_bWindowBorderless);
+		CRect windowRect = Helpers::GetWindowRectMatchingImageSize(m_hWnd, CSize(MIN_WND_WIDTH, MIN_WND_HEIGHT), HUGE_SIZE, dZoom, m_pCurrentImage, bAfterStartup, dZoom < 0, m_bWindowBorderless , GetAutoZoomMode());
 		CRect defaultRect = CMultiMonitorSupport::GetDefaultWindowRect();
 		if (bAfterStartup && CSettingsProvider::This().ExplicitWindowRect()) {
 			windowRect = CRect(defaultRect.TopLeft(), windowRect.Size());
@@ -4082,7 +4171,7 @@ void CMainDlg::PrefetchDIB(const CRect& clientRect) {
 double CMainDlg::GetZoomMultiplier(CJPEGImage* pImage, const CRect& clientRect) {
 	double dZoomToFit;
 	CSize fittedSize = Helpers::GetImageRect(pImage->OrigWidth(), pImage->OrigHeight(), 
-		clientRect.Width(), clientRect.Height(), true, false, false, dZoomToFit);
+		clientRect.Width(), clientRect.Height(), true, false, false, GetAutoZoomMode(), dZoomToFit);
 	// Zoom multiplier (zoom step) should be around 1.1 but reach the value 1.0 after an integral number
 	// of zooming steps
 	int n = Helpers::RoundToInt(log(1/dZoomToFit)/log(1.1));
@@ -4336,77 +4425,39 @@ LRESULT CMainDlg::OnRefreshView(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 
 	return 0;
 }
-
 /*
-// [Custom zoom code]
+// Used in custom CMainDlg::GetVirtualImageSize(). Also was in OnSize() but now commented out!?
+double CMainDlg::GetUpdatedZoomFactor(int nWidth, int nHeight, int nScreenWidth, int nScreenHeight, 
+					bool bAllowZoomIn, bool bFillCrop, bool bLimitAR, double & dZoom) {
 
-// Custom version of Helpers::GetVirtualImageSize
-// Nothing seems to use this anymore. Everything switched to the official function.
-// Todo: Compare with official function and decide if we still need the custom one.
-CSize CMainDlg::GetVirtualImageSize() {
-	if (m_pCurrentImage == NULL) {
-		return CSize(1,1);
-	}
-
-	if (m_dZoom < 0.0)
-		m_dZoom = ConditionalZoomFactor();
-
-	int nNewXSize = (int)(m_pCurrentImage->OrigWidth() * m_dZoom);
-	int nNewYSize = (int)(m_pCurrentImage->OrigHeight() * m_dZoom);
-
-	if (nNewXSize > 65535 || nNewYSize > 65535) {
-		double dFac = 65535.0/max(nNewXSize,nNewYSize);
-		m_dZoom = m_dZoom*dFac;
-		nNewXSize = (int)(m_pCurrentImage->OrigWidth() * m_dZoom);
-		nNewYSize = (int)(m_pCurrentImage->OrigHeight() * m_dZoom);
-	}
-
-	return CSize(nNewXSize,nNewYSize);	
-}
-
-// Used in custom CMainDlg::GetVirtualImageSize() and was used in OnSize() but now commented out.
-// Todo: Decide on what to keep and where to move it within the official functions.
-double CMainDlg::ConditionalZoomFactor() {
-	int nImageW;
-	int nImageH;
-	int nWinW = m_clientRect.Width();
-	int nWinH = m_clientRect.Height();
-	double dZoom;
-	
-	if (m_pCurrentImage == NULL) {
-		dZoom = 1.0;
+	if (eAutoZoomMode == ZM_BookMode) {
+		if (m_bZoomMode == false) {				// Original Size, but shrink to window width (aka ResetZoomTo100Percents)
+			double dImageAR = (double)nWidth/nHeight;
+			if (dImageAR >= 1.0) {					// If it's wider than high, assume a double page
+				dZoom = (double)nScreenWidth/nWidth;			// ... and Fit to screen width
+			} else {								// Else, assume a single page
+				double dAR1 = (((double)nHeight/100.0)*m_nBookPageVisibleHeight) / (double)nScreenHeight;	// Zoom to user specified height
+				double dAR2 = (double)nWidth/nScreenWidth;														// ...but limit maximum image width to window width
+				double dAR = max(dAR1, dAR2);
+				dZoom = 1.0/dAR;
+			}
+		} else {										// ResetZoomToFitWindow (Shrink/enlarge to window)	
+			double dAR1 = (double)nWidth/nScreenWidth;
+			double dAR2 = (double)nHeight/nScreenHeight;
+			double dAR = max(dAR1, dAR2);
+			dZoom = 1.0/dAR;
+		}
 	} else {
-		nImageW = m_pCurrentImage->OrigWidth();
-		nImageH = m_pCurrentImage->OrigHeight();
-
-		if (m_bMangaMode == true) {
-			if (m_bZoomMode == false) {				// Original Size, but shrink to window width (aka ResetZoomTo100Percents)
-				double dImageAR = (double)nImageW/nImageH;
-				if (dImageAR >= 1.0) {					// If it's wider than high, assume a double page
-					dZoom = (double)nWinW/nImageW;			// ... and Fit to screen width
-				} else {								// Else, assume a single page
-					double dAR1 = (((double)nImageH/100.0)*m_nMangaSinglePageVisibleHeight) / (double)nWinH;	// Zoom to user specified height
-					double dAR2 = (double)nImageW/nWinW;														// ...but limit maximum image width to window width
-					double dAR = max(dAR1, dAR2);
-					dZoom = 1.0/dAR;
-				}
-			} else {										// ResetZoomToFitWindow (Shrink/enlarge to window)	
-				double dAR1 = (double)nImageW/nWinW;
-				double dAR2 = (double)nImageH/nWinH;
-				double dAR = max(dAR1, dAR2);
-				dZoom = 1.0/dAR;
-			}
-		} else {
-			if (m_bZoomMode == false) {								// Zoom to window for default (m_bZoomMode = false) 
-				double dAR1 = (double)nImageW/nWinW;
-				double dAR2 = (double)nImageH/nWinH;
-				double dAR = max(dAR1, dAR2);
-				dZoom = 1.0/dAR;
-			} else {												// Leave true size for (m_bZoomMode == true) 
-				dZoom = 1.0;
-			}
+		if (m_bZoomMode == false) {								// Zoom to window for default (m_bZoomMode = false) 
+			double dAR1 = (double)nWidth/nScreenWidth;
+			double dAR2 = (double)nHeight/nScreenHeight;
+			double dAR = max(dAR1, dAR2);
+			dZoom = 1.0/dAR;
+		} else {												// Leave true size for (m_bZoomMode == true) 
+			dZoom = 1.0;
 		}
 	}
+
 	return dZoom;
 }
 */

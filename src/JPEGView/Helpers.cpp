@@ -40,26 +40,51 @@ void SetJPEGViewAppDataPath(LPCTSTR sPath) {
 }
 
 CSize GetImageRect(int nWidth, int nHeight, int nScreenWidth, int nScreenHeight, 
-					bool bAllowZoomIn, bool bFillCrop, bool bLimitAR, double & dZoom) {
-	double dAR1 = (double)nWidth/nScreenWidth;
-	double dAR2 = (double)nHeight/nScreenHeight;
-	double dARMin = min(dAR1, dAR2);
-	double dARMax = max(dAR1, dAR2);
-	double dAR = bFillCrop ? dARMin : dARMax;
-	if (dAR <= 1.0 && !bAllowZoomIn) {
-		if (bFillCrop) dAR = dARMax;
-		if (dAR <= 1.0) {
-			dZoom = 1.0;
-			return CSize(nWidth, nHeight);
+					bool bAllowZoomIn, bool bFillCrop, bool bLimitAR, EAutoZoomMode eAutoZoomMode, double & dZoom) {
+	bAllowZoomIn = (eAutoZoomMode == ZM_FitToScreen || eAutoZoomMode == ZM_FillScreen);
+	bFillCrop = (eAutoZoomMode == ZM_FillScreenNoZoom || eAutoZoomMode == ZM_FillScreen);
+	bLimitAR = (eAutoZoomMode == ZM_FillScreenNoZoom);
+	CSettingsProvider& sp = CSettingsProvider::This();
+	int nBookPageVisibleHeight = sp.BookPageVisibleHeight();
+
+	if (eAutoZoomMode == ZM_BookMode) {
+		double dImageAR = (double)nWidth/nHeight;
+		if (dImageAR >= 1.0) {					// If it's wider than high, assume a double page
+			dZoom = (double)nScreenWidth/nWidth;			// ... and Fit to screen width
+		} else {								// Else, assume a single page
+			double dAR1 = (((double)nHeight/100.0) * nBookPageVisibleHeight) / (double)nScreenHeight;	// Zoom to user specified height
+			double dAR2 = (double)nWidth/nScreenWidth;														// ...but limit maximum image width to window width
+			double dAR = max(dAR1, dAR2);
+			dZoom = 1.0/dAR;
 		}
-	}
-	if (bFillCrop && bLimitAR) {
-		if (((nWidth/dAR * nHeight/dAR) / (nScreenWidth * nScreenHeight)) > 1.5) {
-			dAR = dARMax; // use fit to screen
+
+	} else if (eAutoZoomMode == ZM_None) {
+		dZoom = 1.0;
+	} else {
+		double dAR1 = (double)nWidth/nScreenWidth;
+		double dAR2 = (double)nHeight/nScreenHeight;
+		double dARMin = min(dAR1, dAR2);
+		double dARMax = max(dAR1, dAR2);
+		double dAR = bFillCrop ? dARMin : dARMax;
+		if (dAR <= 1.0 && !bAllowZoomIn) {
+			if (bFillCrop) dAR = dARMax;
+			if (dAR <= 1.0) {
+				dZoom = 1.0;
+				return CSize(nWidth, nHeight);
+			}
 		}
+		if (bFillCrop && bLimitAR) {
+			if (((nWidth/dAR * nHeight/dAR) / (nScreenWidth * nScreenHeight)) > 1.5) {
+				dAR = dARMax; // use fit to screen
+			}
+		}
+		dZoom = 1.0/dAR;
+		dZoom = min(ZoomMax, dZoom);
 	}
-	dZoom = 1.0/dAR;
-	dZoom = min(ZoomMax, dZoom);
+
+	CSize size((int)(nWidth * dZoom + 0.5), (int)(nHeight * dZoom + 0.5));
+
+/*
 	CSize size((int)(nWidth/dAR + 0.5), (int)(nHeight/dAR + 0.5));
 	if (abs(size.cx - nScreenWidth) <= 1 && abs(size.cy - nScreenHeight) <= 1) {
 		// allow 1 pixel tolerance to screen size - prefer screen size in this case to prevent another resize operation to fit image
@@ -67,6 +92,7 @@ CSize GetImageRect(int nWidth, int nHeight, int nScreenWidth, int nScreenHeight,
 		dZoom = min(ZoomMax, dZoom);
 		return CSize(nScreenWidth, nScreenHeight);
 	}
+*/
 	return size;
 }
 
@@ -84,7 +110,7 @@ CSize GetImageRect(int nWidth, int nHeight, int nScreenWidth, int nScreenHeight,
 	CSize newSize = GetImageRect(nWidth, nHeight, nScreenWidth, nScreenHeight,
 		eAutoZoomMode == ZM_FitToScreen || eAutoZoomMode == ZM_FillScreen,
 		eAutoZoomMode == ZM_FillScreenNoZoom || eAutoZoomMode == ZM_FillScreen,
-		eAutoZoomMode == ZM_FillScreenNoZoom, dZoom);
+		eAutoZoomMode == ZM_FillScreenNoZoom, eAutoZoomMode, dZoom);
 	return CSize((int)(nWidth*dZoom + 0.5), (int)(nHeight*dZoom + 0.5));
 }
 
@@ -99,8 +125,15 @@ CSize GetVirtualImageSize(CSize originalImageSize, CSize screenSize, EAutoZoomMo
 		// ---------------------------------------------
 		newSize = CSize((int)(originalImageSize.cx * dZoom + 0.5), (int)(originalImageSize.cy * dZoom + 0.5));
 	}
-	newSize.cx = max(1, min(65535, newSize.cx));
-	newSize.cy = max(1, min(65535, newSize.cy));
+//	newSize.cx = max(1, min(65535, newSize.cx));
+//	newSize.cy = max(1, min(65535, newSize.cy));
+// Do aspect ratio corrected limiting instead
+	if (newSize.cx > 65535 || newSize.cy > 65535) {
+		double dFac = 65535.0/max(newSize.cx,newSize.cy);
+		dZoom = dZoom*dFac;
+		newSize.cx = (int)(originalImageSize.cx * dZoom + 0.5);
+		newSize.cy = (int)(originalImageSize.cy * dZoom + 0.5);
+	}
 	return newSize;
 }
 
@@ -551,7 +584,7 @@ CSize GetTotalBorderSize() {
 	return CSize(nBorderWidth, nBorderHeight);
 }
 
-CRect GetWindowRectMatchingImageSize(HWND hWnd, CSize minSize, CSize maxSize, double& dZoom, CJPEGImage* pImage, bool bForceCenterWindow, bool bKeepAspectRatio, bool bWindowBorderless) {
+CRect GetWindowRectMatchingImageSize(HWND hWnd, CSize minSize, CSize maxSize, double& dZoom, CJPEGImage* pImage, bool bForceCenterWindow, bool bKeepAspectRatio, bool bWindowBorderless, EAutoZoomMode eAutoZoomMode) {
 	int nOrigWidth = (pImage == NULL) ? ::GetSystemMetrics(SM_CXSCREEN) / 2 : pImage->OrigWidth();
 	int nOrigWidthUnzoomed = nOrigWidth;
 	int nOrigHeight = (pImage == NULL) ? ::GetSystemMetrics(SM_CYSCREEN) / 2 : pImage->OrigHeight();
@@ -595,7 +628,7 @@ CRect GetWindowRectMatchingImageSize(HWND hWnd, CSize minSize, CSize maxSize, do
 		CSize imageRect = Helpers::GetImageRect(nOrigWidth, nOrigHeight, 
 			min(maxSize.cx, workingArea.Width() - borderSize.cx),
 			min(maxSize.cy, workingArea.Height() - borderSize.cy),
-			false, false, false, dZoom);
+			false, false, false, eAutoZoomMode, dZoom);
 		nRequiredWidth = imageRect.cx + borderSize.cx;
 		nRequiredHeight = imageRect.cy + borderSize.cy;
 	} else {
@@ -729,7 +762,7 @@ LPCTSTR ConvertTransitionEffectToString(ETransitionEffect effect) {
 	}
 }
 
-static bool IsInFileEndingList(LPCTSTR sFileEndings, LPCTSTR sEnding) {
+static bool IsInFileEndingList(LPCTSTR sFileEndings, LPCTSTR sEnding, int nStartOffset = 1, int nEndingOffset = -1) {
 	const int BUFFER_SIZE = 256;
 	TCHAR buffer[BUFFER_SIZE];
 	_tcsncpy_s(buffer, BUFFER_SIZE, sFileEndings, _TRUNCATE);
@@ -742,7 +775,7 @@ static bool IsInFileEndingList(LPCTSTR sFileEndings, LPCTSTR sEnding) {
 			*sCurrent = 0;
 			sCurrent++;
 		}
-		if (_tcsicmp(sStart + 1, sEnding - 1) == 0) {
+		if (_tcsicmp(sStart + nStartOffset, sEnding + nEndingOffset) == 0) {
 			return true;
 		}
 		sStart = sCurrent;
@@ -772,6 +805,9 @@ EImageFormat GetImageFormat(LPCTSTR sFileName) {
 			return IF_HEIF;
 		} else if (_tcsicmp(sEnding, _T("TGA")) == 0) {
 			return IF_TGA;
+		} else if ((_tcsicmp(sEnding, _T("ZIP")) == 0) || (_tcsicmp(sEnding, _T("CBZ")) == 0)
+			|| (_tcsicmp(sEnding, _T("7Z")) == 0) || (_tcsicmp(sEnding, _T("CB7")) == 0)) {
+			return IF_ZIP;
 		} else if (_tcsicmp(sEnding, _T("QOI")) == 0) {
 			return IF_QOI;
 		} else if (_tcsicmp(sEnding, _T("PSD")) == 0) {
@@ -783,6 +819,11 @@ EImageFormat GetImageFormat(LPCTSTR sFileName) {
 		}
 	}
 	return IF_Unknown;
+}
+
+bool IsRawImageFormat(LPCTSTR sExt)
+{
+	return IsInFileEndingList(CSettingsProvider::This().FileEndingsRAW(), sExt, 2, 0); //2: skip "*." in ref, 0: no '.' in given ext
 }
 
 // Returns the short form of the path (including the file name)

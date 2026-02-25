@@ -23,6 +23,18 @@ struct JxlReader::jxl_cache {
 
 JxlReader::jxl_cache JxlReader::cache = { 0 };
 
+// JXL decoder static cache lock (RAII pattern)
+class CJxlLock {
+public:
+	CJxlLock() { ::InitializeCriticalSection(&m_cs); }
+	~CJxlLock() { ::DeleteCriticalSection(&m_cs); }
+	void Lock() { ::EnterCriticalSection(&m_cs); }
+	void Unlock() { ::LeaveCriticalSection(&m_cs); }
+private:
+	CRITICAL_SECTION m_cs;
+};
+static CJxlLock s_jxlLock;
+
 // based on https://github.com/libjxl/libjxl/blob/main/examples/decode_oneshot.cc
 // and https://github.com/libjxl/libjxl/blob/main/examples/decode_exif_metadata.cc
 bool JxlReader::DecodeJpegXlOneShot(const uint8_t* jxl, size_t size, std::vector<uint8_t>* pixels, int& xsize,
@@ -184,6 +196,9 @@ void* JxlReader::ReadImage(int& width,
 	const void* buffer,
 	int sizebytes)
 {
+	// Lock JXL decoder (thread safety)
+	s_jxlLock.Lock();
+
 	outOfMemory = false;
 	width = height = 0;
 	nchannels = 4;
@@ -196,12 +211,14 @@ void* JxlReader::ReadImage(int& width,
 	std::vector<uint8_t> icc_profile;
 	if (!DecodeJpegXlOneShot((const uint8_t*)buffer, sizebytes, &pixels, width, height,
 		has_animation, frame_count, frame_time, &icc_profile, outOfMemory)) {
+		s_jxlLock.Unlock();
 		return NULL;
 	}
-	int size = width * height * nchannels;
+	size_t size = (size_t)width * height * nchannels;
 	pPixelData = new(std::nothrow) unsigned char[size];
 	if (pPixelData == NULL) {
 		outOfMemory = true;
+		s_jxlLock.Unlock();
 		return NULL;
 	}
 	if (cache.transform == NULL)
@@ -209,7 +226,7 @@ void* JxlReader::ReadImage(int& width,
 	if (!ICCProfileTransform::DoTransform(cache.transform, pixels.data(), pPixelData, width, height)) {
 		// RGBA -> BGRA conversion (with little-endian integers)
 		uint32_t* data = (uint32_t*)pixels.data();
-		for (int i = 0; i * sizeof(uint32_t) < size; i++) {
+		for (size_t i = 0; i * sizeof(uint32_t) < size; i++) {
 			((uint32_t*)pPixelData)[i] = _rotr(_byteswap_ulong(data[i]), 8);
 		}
 	}
@@ -227,12 +244,15 @@ void* JxlReader::ReadImage(int& width,
 	if (!has_animation)
 		DeleteCache();
 
+	s_jxlLock.Unlock();
 	return pPixelData;
 }
 
 void JxlReader::DeleteCache() {
-	free(cache.data);
+	s_jxlLock.Lock();
+	//free(cache.data); //sdneon: Don't free cache.data which is pBuffer allocated in CImageLoadThread!
 	ICCProfileTransform::DeleteTransform(cache.transform);
 	// Setting the decoder and runner to 0 (NULL) will automatically destroy them
 	cache = { 0 };
+	s_jxlLock.Unlock();
 }

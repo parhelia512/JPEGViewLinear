@@ -183,7 +183,7 @@ public:
 	// Get the file name (without path) of the user INI file
 	LPCTSTR GetINIFileTitle() { return m_sIniFileTitle; }
 
-/*GF*/	int MangaSinglePageVisibleHeight() { return m_nMangaSinglePageVisibleHeight; }
+/*GF*/	int BookPageVisibleHeight() { return m_nBookPageVisibleHeight; }
 /*GF*/	bool TitleBarUseFileIcon() { return m_bTitleBarUseFileIcon; }
 
 private:
@@ -341,6 +341,6 @@ private:
 
 	CSettingsProvider(void);
 
-/*GF*/	int m_nMangaSinglePageVisibleHeight;
+/*GF*/	int m_nBookPageVisibleHeight;
 /*GF*/	bool m_bTitleBarUseFileIcon;
 };

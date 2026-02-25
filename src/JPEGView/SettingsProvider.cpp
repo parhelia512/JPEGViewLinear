@@ -481,7 +481,7 @@ void CSettingsProvider::ReadWriteableINISettings() {
 	m_eSlideShowTransitionEffect = Helpers::ConvertTransitionEffectFromString(GetString(_T("SlideShowTransitionEffect"), _T("")));
 
 /*GF	Custom Settings of this mod */	
-/*GF*/	m_nMangaSinglePageVisibleHeight = GetInt(_T("MangaSinglePageVisibleHeight"), 75, 1, 100);
+/*GF*/	m_nBookPageVisibleHeight = GetInt(_T("BookPageVisibleHeight"), 75, 1, 100);
 /*GF*/	m_bTitleBarUseFileIcon = GetBool(_T("TitleBarUseFileIcon"), false);
 }
 

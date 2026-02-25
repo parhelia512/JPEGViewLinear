@@ -4,8 +4,10 @@
 #include "ProcessParams.h"
 #include "WorkThread.h"
 #include <gdiplus.h>
+#include <vector>
 
 class CJPEGImage;
+class ZipEntry;
 
 // returned image data by CImageLoadThread.GetLoadedImage() method
 class CImageData
@@ -98,6 +100,9 @@ private:
 	CString m_sLastPngFileName; // Only for animated PNG files
 	CString m_sLastJxlFileName; // Only for animated JPEG XL files
 	CString m_sLastAvifFileName; // Only for animated AVIF files
+	CString m_sLastZipFileName; // Only for ZIP files
+	int m_nLastZipIndex, m_nZipCount;
+	std::vector<ZipEntry> zipEntries;
 
 	virtual void ProcessRequest(CRequestBase& request);
 	virtual void AfterFinishProcess(CRequestBase& request);
@@ -106,9 +111,11 @@ private:
 	void DeleteCachedPngDecoder();
 	void DeleteCachedJxlDecoder();
 	void DeleteCachedAvifDecoder();
+	void DeleteCachedZip();
 
 	void ProcessReadJPEGRequest(CRequest * request);
 	void ProcessReadPNGRequest(CRequest * request);
+	void ProcessReadZipRequest(CRequest* request);
 	void ProcessReadBMPRequest(CRequest * request);
 	void ProcessReadTGARequest(CRequest * request);
 	void ProcessReadWEBPRequest(CRequest * request);

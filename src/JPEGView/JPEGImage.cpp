@@ -61,8 +61,18 @@ static CBasicProcessing::SIMDArchitecture ToSIMDArchitecture(Helpers::CPUType cp
 CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, int nChannels, __int64 nJPEGHash,
 					   EImageFormat eImageFormat, bool bIsAnimation, int nFrameIndex, int nNumberOfFrames, int nFrameTimeMs,
 					   CLocalDensityCorr* pLDC, bool bIsThumbnailImage, CRawMetadata* pRawMetadata)
+	: CJPEGImage(nWidth, nHeight, pPixels, pEXIFData, nChannels, nJPEGHash,
+		eImageFormat, IF_Unknown, bIsAnimation, nFrameIndex, nNumberOfFrames, nFrameTimeMs,
+		pLDC, bIsThumbnailImage, pRawMetadata)
+{
+}
+
+CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, int nChannels, __int64 nJPEGHash,
+	EImageFormat eImageFormat, EImageFormat eContainerFormat, bool bIsAnimation, int nFrameIndex, int nNumberOfFrames, int nFrameTimeMs,
+	CLocalDensityCorr * pLDC, bool bIsThumbnailImage, CRawMetadata * pRawMetadata)
 	: m_rotationParams{ 0 },
-	m_fColorCorrectionFactorsNull{ 0 }
+	m_fColorCorrectionFactorsNull{ 0 },
+	m_eContainerFormat(eContainerFormat)
 {
 	if (nChannels == 3 || nChannels == 4) {
 		m_pOrigPixels = pPixels;

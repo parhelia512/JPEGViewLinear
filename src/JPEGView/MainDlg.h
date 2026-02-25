@@ -51,7 +51,15 @@ public:
 		POS_Current,
 		POS_Clipboard,
 		POS_Toggle,
-		POS_AwayFromCurrent
+		POS_AwayFromCurrent,
+		POS_Next_100,
+		POS_Previous_100,
+		POS_Next_Folder,
+		POS_Previous_Folder,
+		//exit manga archive to next/previous image:
+		POS_Next_Image,
+		POS_Previous_Image,
+		POS_Goto_Image_Num
 	};
 
 	CMainDlg(bool bForceFullScreen);
@@ -401,16 +409,13 @@ private:
 	WINDOWPLACEMENT m_storedWindowPlacement2;	// position for windowed mode
 	bool m_bShowInfo;
 	bool m_bPanTimerActive;
-	int m_nMangaSinglePageVisibleHeight;
-	bool m_bMangaMode;
+	int m_nBookPageVisibleHeight;
+	bool m_bBookPageMode;
 	CPoint m_offsets_custom;
 
 	void ChangeFolderLanguage();
 	void OpenDefaultEditor();
 
-	//CSize GetVirtualImageSize();
-	//double ConditionalZoomFactor();
-	
 	CString ReplaceNoCase(LPCTSTR instr,LPCTSTR oldstr,LPCTSTR newstr);
 	void SaveBookmark();
 };

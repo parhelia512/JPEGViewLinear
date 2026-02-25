@@ -10,12 +10,25 @@
 
 CJPEGImage* RawReader::ReadImage(LPCTSTR strFileName, bool& bOutOfMemory, bool bGetThumb)
 {
-	unsigned char* pPixelData = NULL;
-
 	LibRaw RawProcessor;
 	if (RawProcessor.open_file(strFileName) != LIBRAW_SUCCESS) {
 		return NULL;
 	}
+	return RawReader::ReadImage(RawProcessor, bOutOfMemory, bGetThumb);
+}
+
+CJPEGImage* RawReader::ReadImage(const void* buffer, size_t size, bool& bOutOfMemory, bool bGetThumb, EImageFormat eContainerFormat, bool bIsAnimation, int nFrameIndex, int nNumberOfFrames, int nFrameTimeMs)
+{
+	LibRaw RawProcessor;
+	if (RawProcessor.open_buffer(buffer, size) != LIBRAW_SUCCESS) {
+		return NULL;
+	}
+	return RawReader::ReadImage(RawProcessor, bOutOfMemory, bGetThumb, eContainerFormat, bIsAnimation, nFrameIndex, nNumberOfFrames, nFrameTimeMs);
+}
+
+CJPEGImage* RawReader::ReadImage(LibRaw &RawProcessor, bool& bOutOfMemory, bool bGetThumb, EImageFormat eContainerFormat, bool bIsAnimation, int nFrameIndex, int nNumberOfFrames, int nFrameTimeMs)
+{
+	unsigned char* pPixelData = NULL;
 	int width, height, colors, bps;
 	
 	CJPEGImage* Image = NULL;
@@ -61,7 +74,7 @@ CJPEGImage* RawReader::ReadImage(LPCTSTR strFileName, bool& bOutOfMemory, bool b
 			RawProcessor.imgdata.other.parsed_gps.longref, RawProcessor.imgdata.other.parsed_gps.altitude, RawProcessor.imgdata.other.parsed_gps.altref);
 
 		if (pPixelData)
-			Image = new CJPEGImage(width, height, pPixelData, NULL, colors, 0, IF_CameraRAW, false, 0, 1, 0, NULL, false, metadata);
+			Image = new CJPEGImage(width, height, pPixelData, NULL, colors, 0, IF_CameraRAW, eContainerFormat, bIsAnimation, nFrameIndex, nNumberOfFrames, nFrameTimeMs, NULL, false, metadata);
 	} else if (RawProcessor.is_jpeg_thumb()) {
 		TJSAMP eChromoSubSampling;
 		if (RawProcessor.unpack_thumb() != LIBRAW_SUCCESS) {
@@ -81,7 +94,7 @@ CJPEGImage* RawReader::ReadImage(LPCTSTR strFileName, bool& bOutOfMemory, bool b
 				RawProcessor.imgdata.other.parsed_gps.longref, RawProcessor.imgdata.other.parsed_gps.altitude, RawProcessor.imgdata.other.parsed_gps.altref);
 
 			Image = new CJPEGImage(width, height, pPixelData, NULL /* Helpers::FindEXIFBlock(thumb->data, thumb->data_size) */, colors,
-				Helpers::CalculateJPEGFileHash(thumb->data, thumb->data_size), IF_JPEG_Embedded, false, 0, 1, 0, NULL, false, metadata);
+				Helpers::CalculateJPEGFileHash(thumb->data, thumb->data_size), IF_JPEG_Embedded, eContainerFormat, bIsAnimation, nFrameIndex, nNumberOfFrames, nFrameTimeMs, NULL, false, metadata);
 
 			Image->SetJPEGComment(Helpers::GetJPEGComment(thumb->data, thumb->data_size));
 			Image->SetJPEGChromoSampling(eChromoSubSampling);
