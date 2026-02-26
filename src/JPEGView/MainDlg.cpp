@@ -2679,8 +2679,17 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 			AdjustSharpen((nCommand == IDM_SHARPEN_INC) ? SHARPEN_INC : -SHARPEN_INC);
 			break;
 		case IDM_CONTEXT_MENU:
+			{
 			BOOL bNotUsed;
-			OnContextMenu(0, 0, (m_nMouseX & 0xFFFF) | ((m_nMouseY & 0xFFFF) << 16), bNotUsed);
+			/*
+			OnContextMenu() expects screen coordinates, but m_nMouseX/m_nMouseY contain client area coordinates!
+			When OnContextMenu() gets called after WM_CONTEXTMENU from the Message Handler, it will receive screen
+			coordinates in LPARAM from the beginning, but when using m_nMouseX/m_nMouseY, we need to convert first.
+			*/
+			int MouseCoordScreen = (m_nMouseX & 0xFFFF) | ((m_nMouseY & 0xFFFF) << 16);
+			::ClientToScreen(this->m_hWnd, (LPPOINT)&MouseCoordScreen);
+			OnContextMenu(0, 0, MouseCoordScreen, bNotUsed);
+			}
 			break;
 		case IDM_SET_WALLPAPER_ORIG:
 			if (m_pFileList->Current() != NULL && m_pCurrentImage != NULL) {
