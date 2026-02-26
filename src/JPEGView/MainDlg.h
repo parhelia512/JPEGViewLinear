@@ -365,7 +365,6 @@ private:
 	void ZoomToSelection();
 	double GetZoomFactorForFitToScreen(bool bFillWithCrop, bool bAllowEnlarge);
 	CProcessParams CreateProcessParams(bool bNoProcessingAfterLoad);
-	CProcessParams CreateProcessParams(bool bNoProcessingAfterLoad, bool ToPreviousImage);
 	void ResetParamsToDefault();
 	void StartSlideShowTimer(int nMilliSeconds);
 	void StopSlideShowTimer(void);
@@ -375,7 +374,7 @@ private:
 	void InitParametersForNewImage();
 	void ExchangeProcessingParams();
 	void SaveParameters();
-	void AfterNewImageLoaded(bool bSynchronize, bool bAfterStartup, bool noAdjustWindow);
+	void AfterNewImageLoaded(bool bSynchronize, bool bAfterStartup, bool noAdjustWindow, bool bMoveBack = false);
 	CRect ScreenToDIB(const CSize& sizeDIB, const CRect& rect);
 	void ToggleMonitor();
 	CRect GetZoomTextRect(CRect imageProcessingArea);

@@ -940,7 +940,8 @@ int GetFrameIndex(CJPEGImage* pImage, bool bNext, bool bPlayAnimation, bool & sw
 // Gets an index string of the form [a/b] for multiframe images, empty string for single frame images
 CString GetMultiframeIndex(CJPEGImage* pImage) {
 	bool isMultiFrame = pImage != NULL && pImage->NumberOfFrames() > 1;
-	if (isMultiFrame && !pImage->IsAnimation()) {
+	if (isMultiFrame && (!pImage->IsAnimation() || pImage->ContainerHasMultipleImages())) {
+		// For some reason, containers like CBZ files return IsAnimation() == true
 		CString s;
 		s.Format(_T(" [%d/%d]"), pImage->FrameIndex() + 1, pImage->NumberOfFrames());
 		return s;

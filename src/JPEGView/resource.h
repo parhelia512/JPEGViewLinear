@@ -300,6 +300,10 @@
 #define IDM_PAN_DOWN	15201		// :KeyMap: pan down
 #define IDM_PAN_RIGHT	15202		// :KeyMap: pan right
 #define IDM_PAN_LEFT	15203		// :KeyMap: pan left
+#define IDM_NAVI_COMBO_UP		15204	// :KeyMap: combined naviation - pan up or go to previous image
+#define IDM_NAVI_COMBO_DOWN		15205	// :KeyMap: combined naviation - pan down or go to next image
+#define IDM_NAVI_COMBO_LEFT		15206	// :KeyMap: combined naviation - pan left or go to previous image
+#define IDM_NAVI_COMBO_RIGHT	15207	// :KeyMap: combined naviation - pan right or go to next image
 #define IDM_CONTEXT_MENU	16000		// :KeyMap: display context menu
 
 #define IDM_CROP_SEL		20000
