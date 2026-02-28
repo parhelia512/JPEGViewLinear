@@ -15,7 +15,7 @@
 
 CAppModule _Module;
 
-static bool _bFileLoadedByExistingInstance = false;
+static HWND _HWNDOtherInstance = NULL;
 
 static BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 	const int BUF_LEN = 255;
@@ -37,7 +37,7 @@ static BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 		LRESULT res = ::SendMessageTimeout(hwnd, WM_COPYDATA, 0, (LPARAM)&copyData, 0, 250, resultPtr);
 
 		if (*resultPtr == (ULONG_PTR)KEY_MAGIC) {
-			_bFileLoadedByExistingInstance = true;
+			_HWNDOtherInstance = hwnd;
 			return FALSE;	// stop enumerating windows
 		}
 	}
@@ -232,13 +232,13 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 		::EnumWindows((WNDENUMPROC)EnumWindowsProc, (LPARAM)(LPCTSTR)sStartupFile);
 	}
 
-/* Debugging */	TCHAR debugtext[1024];
-/* Debugging */	swprintf(debugtext,1024,TEXT("_tWinMain() 1:   sStartupFile='%s'   _bFileLoadedByExistingInstance=%d"), sStartupFile, _bFileLoadedByExistingInstance);
-/* Debugging */	::OutputDebugStringW(debugtext);
+//* Debugging */	TCHAR debugtext[1024];
+//* Debugging */	swprintf(debugtext,1024,TEXT("_tWinMain() 1:   sStartupFile='%s'   _HWNDOtherInstance=%d"), sStartupFile, _HWNDOtherInstance);
+//* Debugging */	::OutputDebugStringW(debugtext);
 
 	int nRet = 0;
 	//Run application
-	if (!_bFileLoadedByExistingInstance) {
+	if (_HWNDOtherInstance == NULL) {
 		// Initialize GDI+
 		Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 		ULONG_PTR gdiplusToken;
@@ -261,6 +261,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 
 		// Shut down GDI+
 		Gdiplus::GdiplusShutdown(gdiplusToken);
+	} else {
+		SetForegroundWindow(_HWNDOtherInstance);
 	}
 
 	::CloseHandle(hMutex);
