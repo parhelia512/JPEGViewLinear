@@ -71,7 +71,7 @@ public:
 	Helpers::ETransitionEffect SlideShowTransitionEffect() { return m_eSlideShowTransitionEffect; }
 	int SlideShowEffectTimeMs() { return m_nSlideShowEffectTimeMs; }
 	bool ForceGDIPlus() { return m_bForceGDIPlus; }
-	bool SingleInstance() { return m_bSingleInstance; }
+	Helpers::ESingleInstanceMode SingleInstanceMode() { return m_eSingleInstanceMode; }
 	bool SingleFullScreenInstance() { return m_bSingleFullScreenInstance; }
 	int JPEGSaveQuality() { return m_nJPEGSaveQuality; }
 	int WEBPSaveQuality() { return m_nWEBPSaveQuality; }
@@ -248,7 +248,7 @@ private:
 	Helpers::ETransitionEffect m_eSlideShowTransitionEffect;
 	int m_nSlideShowEffectTimeMs;
 	bool m_bForceGDIPlus;
-	bool m_bSingleInstance;
+	Helpers::ESingleInstanceMode m_eSingleInstanceMode;
 	bool m_bSingleFullScreenInstance;
 	int m_nJPEGSaveQuality;
 	int m_nWEBPSaveQuality;

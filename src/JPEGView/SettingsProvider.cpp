@@ -167,6 +167,19 @@ CSettingsProvider::CSettingsProvider(void) {
 		m_eDownsamplingFilter = Filter_Downsampling_Catrom;
 	}
 
+
+	CString sSingleInstanceMode = GetString(_T("SingleInstance"), _T("PerFolder"));
+	if (sSingleInstanceMode.CompareNoCase(_T("Never")) == 0) {
+		m_eSingleInstanceMode = Helpers::SI_Never;
+	} else if (sSingleInstanceMode.CompareNoCase(_T("PerFolder")) == 0) {
+		m_eSingleInstanceMode = Helpers::SI_PerFolder;
+	} else if (sSingleInstanceMode.CompareNoCase(_T("Always")) == 0) {
+		m_eSingleInstanceMode = Helpers::SI_Always;
+	} else {
+		m_eSingleInstanceMode = Helpers::SI_PerFolder;
+	}
+
+
 	m_bNavigateMouseWheel = GetBool(_T("NavigateWithMouseWheel"), false);
 	m_dMouseWheelZoomSpeed = GetDouble(_T("MouseWheelZoomSpeed"), 1.0, 0.1, 10);
 
@@ -184,7 +197,6 @@ CSettingsProvider::CSettingsProvider(void) {
 	m_nMaxSlideShowFileListSize = GetInt(_T("MaxSlideShowFileListSizeKB"), 200, 100, 10000);
 	m_nSlideShowEffectTimeMs = GetInt(_T("SlideShowEffectTime"), 200, 100, 5000);
 	m_bForceGDIPlus = GetBool(_T("ForceGDIPlus"), false);
-	m_bSingleInstance = GetBool(_T("SingleInstance"), false);
 	m_bSingleFullScreenInstance = GetBool(_T("SingleFullScreenInstance"), true);
 	m_nJPEGSaveQuality = GetInt(_T("JPEGSaveQuality"), 85, 0, 100);
 	m_nWEBPSaveQuality = GetInt(_T("WEBPSaveQuality"), 85, 0, 100);

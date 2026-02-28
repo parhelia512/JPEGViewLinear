@@ -16,10 +16,11 @@
 ; * Эти настройки управляют поведением JPEGView
 ; *****************************************************************************
 
-; Если "true", то разрешено запускать только одну копию JPEGView за раз;
-; если "false", то можно запускать несколько копий одновременно.
-; Установите в "true", чтобы открывать все изображения в одном и том же окне JPEGView.
-SingleInstance=false
+; Ограничивает количество параллельно запускаемых экземпляров JPEGView. [По умолчанию: "PerFolder"]
+; "Always"		Один экземпляр. Все изображения открываются в одном окне JPEGView.
+; "PerFolder"	Изображения, открытые из разных папок, открываются в отдельных окнах JPEGView.
+; "Never"		Каждое изображение, открытое из файлового менеджера, получает собственное окно JPEGView.
+SingleInstance=PerFolder
 
 ; Если "true", то при запуске JPEGView не показывается окно открытия файла для выбора имени файла как параметра.
 SkipFileOpenDialogOnStartup=false
@@ -97,27 +98,35 @@ AllowFileDeletion=true
 ; Установите в "auto", чтобы использовался язык операционной системы.
 ; Для других языков нужно применять языковые коды по стандарту ISO 639-1.
 ; В настоящий момент поддерживаются следующие языки:
-; 'bel'     белорусский
-; 'cs'      чешский
-; 'de'      немецкий
-; 'el'      греческий
-; 'en'      английский (по умолчанию)
-; 'es'      испанский (Испания)
-; 'es-ar'   испанский (Латинская Америка)
-; 'eu'      баскский
-; 'fr'      французский
-; 'it'      итальянский
-; 'ja'      японский
-; 'kr'      корейский
-; 'pl'      польский
-; 'pt'      португальский
-; 'pt-br'   португальский (Бразилия)
-; 'ro'      румынский
-; 'ru'      русский
-; 'sv'      шведский
-; 'uk'      украинский
-; 'zh'      китайский
-; 'zh-tw'   китайский (Тайвань)
+; 'be'    белорусский
+; 'bg'    болгарский
+; 'cs'    чешский
+; 'de'    немецкий
+; 'el'    греческий
+; 'en'    английский (по умолчанию)
+; 'es'    испанский (Испания)
+; 'es-ar' испанский (Аргентина)
+; 'eu'    баскский
+; 'fi'    финский
+; 'fr'    французский
+; 'hu'    венгерский
+; 'it'    итальянский
+; 'ja'    японский
+; 'ko'    корейский
+; 'pl'    польский
+; 'pt'    португальский
+; 'pt-br' португальский (Бразилия)
+; 'ro'    румынский
+; 'ru'    русский
+; 'sk'    словацкий
+; 'sl'    словенский
+; 'sr'    сербский
+; 'sv'    шведский
+; 'ta'    тамильский
+; 'tr'    турецкий
+; 'uk'    украинский
+; 'zh'    китайский, упрощенный
+; 'zh-tw' китайский, традиционный (Тайвань)
 Language=auto
 
 ; Цвет фона (в формате R G B). Диапазон каждого компонента – от 0 до 255.
@@ -236,7 +245,7 @@ FolderNavigation=LoopFolder
 
 ; Если "true", то после последнего файла в папке переходить на первый файл (и наоборот).
 ; Если "false", то по достижении последнего (или первого) файла останавливать навигацию.
-WrapAroundFolder=false
+WrapAroundFolder=true
 
 ; Если параметр WrapAroundFolder установлен в false, то предупреждать при попытке перейти
 ; к следующему файлу, когда он находится в конце списка файлов, или к предыдущему файлу,
@@ -259,7 +268,7 @@ BeepSoundAlert=false
 
 ; Если "true", то колёсико мыши сменяет изображения, а масштаб – при нажатой Ctrl.
 ; Если "false", то колёсико мыши изменяет масштаб (нажимать Ctrl не требуется).
-NavigateWithMouseWheel=true
+NavigateWithMouseWheel=false
 
 ; Поменять местами дополнительные кнопки мыши ("Вперёд" и "Назад")
 ; (в сравнении с Internet Explorer).
@@ -683,31 +692,31 @@ Units=auto
 
 
 ; *****************************************************************************
-; * New Settings
+; * Новые настройки
 ; *
-; * These settings have been added in JPEGViewL
+; * Эти настройки добавлены в JPEGView.
 ; *****************************************************************************
 
-; Sources like CBZ/CBR/CB7 files or files in folders with "\manga\" or "\comics\" in their path have different behaviour for image placement and zoom:
-;	- They get opened in fullscreen mode on launch. Controlled by setting "BookModeLaunchFullscreen".
-;	- They react slightly different to navigation input of 'left', 'right', 'up', 'down' arrow keys.
-;	- They get centered on the top half of the image when moving forward and at the bottom half when moving backwards.
-;	- For double pages (e.g. when image width is larger than height), they get sized to fit the window width.
-;	- For single pages (e.g. when image width is smaller than height), their images get scaled by the percent value of the setting 'BookModePageHeight'.
+; Для файлов CBZ/CBR/CB7 или файлов в папках, содержащих в пути "\manga\" или "\comics\", поведение при размещении и масштабировании изображений может отличаться:
+;	- При запуске они открываются в полноэкранном режиме. Это регулируется параметром "BookModeLaunchFullscreen".
+;	- Они немного по-разному реагируют на ввод данных с помощью клавиш со стрелками «влево», «вправо», «вверх» и «вниз».
+;	- При движении вперед они центрируются в верхней половине изображения, а при движении назад — в нижней половине.
+;	- Для разворотов (например, когда ширина изображения превышает высоту) размер изображения подстраивается под ширину окна.
+;	- Для отдельных страниц (например, когда ширина изображения меньше высоты) изображения масштабируются в процентах, заданных параметром 'BookModePageHeight'.
 
-; How much larger than window height should book type sources be zoomed to. [100-1000. Default: 122, meaning 122% of window height]
+;Насколько больше высоты окна должны быть источники информации типа «книга» масштабированы. [100-1000. По умолчанию: 122, что означает 122% от высоты окна]
 BookModePageHeight=122
 
-; Launch book type (CBZ/CBR/CB7 files and files in folders with "\manga\" or "\comics\" in their path fullscreen? [true/false. Default: true]
+; Запуск файлов типа «книга» (CBZ/CBR/CB7 и файлов в папках с "\manga\" или "\comics\" в пути) в полноэкранном режиме? [true/false. По умолчанию: true]
 BookModeLaunchFullscreen=true
 
-; Enable smooth scrolling on panning keys (IDM_PAN_UP, IDM_PAN_DOWN, IDM_PAN_LEFT, IDM_PAN_RIGHT)? [true/false. Default: true]
+;Включить плавную прокрутку при нажатии клавиш панорамирования (IDM_PAN_UP, IDM_PAN_DOWN, IDM_PAN_LEFT, IDM_PAN_RIGHT)? [true/false. По умолчанию: true]
 SmoothScrolling=true
 
-; Should the panning keys navigate to next/previous image, when panning isn't available? [true/false. Default: true]
+; Должны ли клавиши панорамирования переключать на следующее/предыдущее изображение, если панорамирование недоступно? [true/false. По умолчанию: true]
 SmartPanningKeys=true
 
-; Show current file type's icon instead of JpegView application icon in title bar? [true/false. Default: true]
+; Отображать значок текущего типа файла вместо значка приложения JpegView в строке заголовка? [true/false. По умолчанию: true]
 TitleBarUseFileIcon=true
 
 

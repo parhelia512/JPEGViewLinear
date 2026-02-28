@@ -10,9 +10,11 @@
 ; * These options control how JPEGView operates
 ; *****************************************************************************
 
-; If set to true, only one single instance of JPEGView runs at any time, if false multiple instances are allowed
-; Set to true to open all images in the same JPEGView window.
-SingleInstance=false
+; Limits how many instances of JPEGView are allowed to run in parallel. [Default: "PerFolder"]
+;  "Always"		Single instance. All images open in the same window of JPEGView.
+;  "PerFolder"	Images opened from different folders open in separate JPEGView windows.
+;  "Never"		Each image opened from the file manager gets its own JPEGView window.
+SingleInstance=PerFolder
 
 ; Set to true to skip the 'File Open' dialog when starting JPEGView without providing a file name as parameter
 SkipFileOpenDialogOnStartup=false

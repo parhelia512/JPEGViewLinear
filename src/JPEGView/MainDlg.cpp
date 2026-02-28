@@ -953,10 +953,10 @@ LRESULT CMainDlg::OnAnotherInstanceStarted(UINT /*uMsg*/, WPARAM /*wParam*/, LPA
 				}
 			}
 
-			if ((sCurrentFile == NULL) || (m_bFullScreenMode && CSettingsProvider::This().SingleFullScreenInstance()) || CSettingsProvider::This().SingleInstance() || bSameImageFolder) {
+			if ((sCurrentFile == NULL) || (m_bFullScreenMode && CSettingsProvider::This().SingleFullScreenInstance()) || (CSettingsProvider::This().SingleInstanceMode() == Helpers::SI_Always) || ((CSettingsProvider::This().SingleInstanceMode() == Helpers::SI_PerFolder) && bSameImageFolder)) {
 				m_sStartupFile = sCopyDataFile;
 
-//* Debugging */	swprintf(debugtext,1024,TEXT("OnAnotherInstanceStarted() 2a:  Opening because   (sCurrentFile == NULL)=%d   (m_bFullScreenMode && SingleFullScreenInstance)=%d   SingleInstance=%d   bSameImageFolder=%d"), (sCurrentFile == NULL), (m_bFullScreenMode && CSettingsProvider::This().SingleFullScreenInstance()), CSettingsProvider::This().SingleInstance(), bSameImageFolder);
+//* Debugging */	swprintf(debugtext,1024,TEXT("OnAnotherInstanceStarted() 2a:  Opening because   (sCurrentFile == NULL)=%d   (m_bFullScreenMode && SingleFullScreenInstance)=%d   SingleInstance=%d   bSameImageFolder=%d"), (sCurrentFile == NULL), (m_bFullScreenMode && CSettingsProvider::This().SingleFullScreenInstance()), CSettingsProvider::This().SingleInstanceMode(), bSameImageFolder);
 //* Debugging */	::OutputDebugStringW(debugtext);
 
 				::PostMessage(m_hWnd, WM_LOAD_FILE_ASYNCH, 0, KEY_MAGIC);
@@ -965,7 +965,7 @@ LRESULT CMainDlg::OnAnotherInstanceStarted(UINT /*uMsg*/, WPARAM /*wParam*/, LPA
 				SetForegroundWindow(m_hWnd);
 				return KEY_MAGIC;
 			} else {
-//* Debugging */	swprintf(debugtext,1024,TEXT("OnAnotherInstanceStarted() 2b:  Ignoring because   (sCurrentFile == NULL)=%d   (m_bFullScreenMode && SingleFullScreenInstance)=%d   SingleInstance=%d   bSameImageFolder=%d"), (sCurrentFile == NULL), (m_bFullScreenMode && CSettingsProvider::This().SingleFullScreenInstance()), CSettingsProvider::This().SingleInstance(), bSameImageFolder);
+//* Debugging */	swprintf(debugtext,1024,TEXT("OnAnotherInstanceStarted() 2b:  Ignoring because   (sCurrentFile == NULL)=%d   (m_bFullScreenMode && SingleFullScreenInstance)=%d   SingleInstance=%d   bSameImageFolder=%d"), (sCurrentFile == NULL), (m_bFullScreenMode && CSettingsProvider::This().SingleFullScreenInstance()), CSettingsProvider::This().SingleInstanceMode(), bSameImageFolder);
 //* Debugging */	::OutputDebugStringW(debugtext);
 			}
 		}

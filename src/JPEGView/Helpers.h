@@ -35,6 +35,13 @@ namespace Helpers {
 		NM_LoopSameDirectoryLevel
 	};
 
+	// Single instance modes
+	enum ESingleInstanceMode {
+		SI_Never,
+		SI_PerFolder,
+		SI_Always
+	};
+	
 	// Auto zoom modes
 	enum EAutoZoomMode {
 		ZM_None,
