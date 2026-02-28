@@ -43,14 +43,17 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 	// Search if we have the requested image already present or in progress
 	CImageRequest* pRequest = FindRequest(strFileName, nFrameIndex);
 	bool bDirectionChanged = eDirection != m_eOldDirection || eDirection == TOGGLE;
-	// ??????????????????????????(TOGGLE ????????)
+	// [From] https://github.com/aviscaerulea/jpegview-nt.git
+	// "Since this is a bidirectional read-ahead, the read-ahead cache is maintained even
+	// when changing direction (TOGGLE is an exception and the entire cache is discarded)."
+	// 双方向先読みなので方向転換時も先読みキャッシュを保持（TOGGLE は例外的に全破棄）
 	bool bRemoveAlsoActiveRequests = (eDirection == TOGGLE && bDirectionChanged);
 	bool bWasOutOfMemory = false;
 	m_eOldDirection = eDirection;
-/*GF*/	TCHAR debugtext[512];
+/*GF*/	TCHAR debugtext[1024];
 
 	if (pRequest == NULL) {
-/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::RequestImage() -> StartNewRequest(%s, %d, processParams)"), strFileName, nFrameIndex);
+/*GF*/	swprintf(debugtext,1024,TEXT("CJPEGProvider::RequestImage() -> StartNewRequest() Frame %d  of  %s"), nFrameIndex, strFileName);
 /*GF*/	::OutputDebugStringW(debugtext);
 		// no request pending for this file, add to request queue and start async
 		pRequest = StartNewRequest(strFileName, nFrameIndex, processParams);
@@ -63,7 +66,7 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 
 	// wait for request if not yet ready
 	if (!pRequest->Ready) {
-/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::RequestImage() waiting for image to finish loading from disk:  %s"), pRequest->FileName);
+/*GF*/	swprintf(debugtext,1024,TEXT("CJPEGProvider::RequestImage() waiting for image to finish loading from disk: Frame %d  of  %s"), nFrameIndex, pRequest->FileName);
 /*GF*/	::OutputDebugStringW(debugtext);
 
 		::WaitForSingleObject(pRequest->EventFinished, INFINITE);
@@ -77,7 +80,7 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 				processParams.RotationParams.Rotation, processParams.Zoom, processParams.Offsets, 
 				CSize(processParams.TargetWidth, processParams.TargetHeight), processParams.MonitorSize);
 		}
-/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::RequestImage() found in cache:  %s"), pRequest->FileName);
+/*GF*/	swprintf(debugtext,1024,TEXT("CJPEGProvider::RequestImage() found in cache: Frame %d  of  %s"), nFrameIndex, pRequest->FileName);
 /*GF*/	::OutputDebugStringW(debugtext);
 	}
 
@@ -88,11 +91,12 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 	if (pRequest->OutOfMemory) {
 		// The request could not be satisfied because the system is out of memory.
 		// Clear all memory and try again - maybe some readahead requests can be deleted
-/*GF*/	swprintf(debugtext,255,TEXT("Retrying request because out of memory: %s"), pRequest->FileName);
-/*GF*/	::OutputDebugStringW(debugtext);
 
 		bWasOutOfMemory = true;
 		if (FreeAllPossibleMemory()) {
+/*GF*/	swprintf(debugtext,1024,TEXT("Retrying request because out of memory: Frame %d  of  %s"), nFrameIndex, pRequest->FileName);
+/*GF*/	::OutputDebugStringW(debugtext);
+
 			DeleteElement(pRequest);
 			pRequest = StartRequestAndWaitUntilReady(strFileName, nFrameIndex, processParams);
 		}
@@ -104,23 +108,31 @@ CJPEGImage* CJPEGProvider::RequestImage(CFileList* pFileList, EReadAheadDirectio
 
 	// check if we shall start new requests (don't start another request if we are short of memory!)
 	if (m_requestList.size() < (unsigned int)m_nNumBuffers && !bWasOutOfMemory && eDirection != NONE) {
-		// ??????: ??????????(3/4)????(1/4)???
+		// [From] https://github.com/aviscaerulea/jpegview-nt.git
+		// "Bidirectional read-ahead: Free buffers are allocated forward (3/4) and backward (1/4)"
+		// 双方向先読み: 空きバッファを前方向（3/4）と後方向（1/4）に配分
 		int nAvailableSlots = m_nNumBuffers - (int)m_requestList.size();
 		if (nAvailableSlots > 0) {
-			// ??????????(?? 1 ????? 75%)
+			// "Number of pages to read ahead in the direction of travel (minimum 1, 75% of available space)"
+			// 進行方向の先読み枚数（最低 1 枚、空きの 75%）
 			int nForwardRequests = max(1, (nAvailableSlots * 3 + 3) / 4);
-			// ?????????(??????? 0 ?)
+
+			// "Number of read-ahead pages in the reverse direction (all remaining, minimum 0)"
+			// 逆方向の先読み枚数（残り全て、最低 0 枚）
 			int nBackwardRequests = max(0, nAvailableSlots - nForwardRequests);
 
-			// TOGGLE ?????????????(2 ??????????)
+			// "No bidirectional read-ahead for TOGGLE (only for switching between 2 images)"
+			// TOGGLE の場合は双方向先読みしない（2 画像間の切り替え専用）
 			if (eDirection == TOGGLE) {
 				nBackwardRequests = 0;
 			}
 
-			// ????????
+			// "Predicting the direction of travel"
+			// 進行方向の先読み
 			StartNewRequestBundle(pFileList, eDirection, processParams, nForwardRequests, pRequest);
 
-			// ???????(TOGGLE ??)
+			// "Backward read-ahead (non-TOGGLE)"
+			// 逆方向の先読み（TOGGLE 以外）
 			if (nBackwardRequests > 0) {
 				EReadAheadDirection eReverseDirection = (eDirection == FORWARD) ? BACKWARD : FORWARD;
 				StartNewRequestBundle(pFileList, eReverseDirection, processParams, nBackwardRequests, pRequest);
@@ -230,8 +242,8 @@ CJPEGProvider::CImageRequest* CJPEGProvider::FindRequest(LPCTSTR strFileName, in
 }
 
 CJPEGProvider::CImageRequest* CJPEGProvider::StartRequestAndWaitUntilReady(LPCTSTR sFileName, int nFrameIndex, const CProcessParams & processParams) {
-/*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::StartRequestAndWaitUntilReady() -> StartNewRequest(%s, %d, processParams)"), sFileName, nFrameIndex);
+/*GF*/	TCHAR debugtext[1024];
+/*GF*/	swprintf(debugtext,1024,TEXT("CJPEGProvider::StartRequestAndWaitUntilReady() -> StartNewRequest(%s, %d, processParams)"), sFileName, nFrameIndex);
 /*GF*/	::OutputDebugStringW(debugtext);
 
 	CImageRequest* pRequest = StartNewRequest(sFileName, nFrameIndex, processParams);
@@ -256,8 +268,8 @@ void CJPEGProvider::StartNewRequestBundle(CFileList* pFileList, EReadAheadDirect
 				paramsCopied.ProcFlags = SetProcessingFlag(paramsCopied.ProcFlags, PFLAG_NoProcessingAfterLoad, false);
 				StartNewRequest(sFileName, nFrameIndex, paramsCopied);
 			} else {
-/*GF*/			TCHAR debugtext[512];
-/*GF*/			swprintf(debugtext,255,TEXT("CJPEGProvider::StartNewRequestBundle() -> StartNewRequest(%s, %d, processParams)"), sFileName, nFrameIndex);
+/*GF*/			TCHAR debugtext[1024];
+/*GF*/			swprintf(debugtext,1024,TEXT("CJPEGProvider::StartNewRequestBundle() -> StartNewRequest(%s, %d, processParams)"), sFileName, nFrameIndex);
 /*GF*/			::OutputDebugStringW(debugtext);
 				StartNewRequest(sFileName, nFrameIndex, processParams);
 			}
@@ -283,8 +295,8 @@ void CJPEGProvider::GetLoadedImageFromWorkThread(CImageRequest* pRequest) {
 		pRequest->Ready = true;
 		pRequest->HandlingThread = NULL;
 
-/*GF*/	TCHAR debugtext[512];
-/*GF*/	swprintf(debugtext,255,TEXT("CJPEGProvider::GetLoadedImageFromWorkThread() finished loading from disk:  %s"), pRequest->FileName);
+/*GF*/	TCHAR debugtext[1024];
+/*GF*/	swprintf(debugtext,1024,TEXT("CJPEGProvider::GetLoadedImageFromWorkThread() finished loading from disk:  %s"), pRequest->FileName);
 /*GF*/	::OutputDebugStringW(debugtext);
 	}
 }
@@ -383,7 +395,9 @@ void CJPEGProvider::DeleteElementAt(std::list<CImageRequest*>::iterator iterator
 }
 
 void CJPEGProvider::DeleteElement(CImageRequest* pRequest) {
-	m_requestList.remove(pRequest);  // ?????????
+	// [From] https://github.com/aviscaerulea/jpegview-nt.git
+	// "Remove from list first"
+	m_requestList.remove(pRequest);  // リストから先に除去
 	delete pRequest->Image;
 	delete pRequest;
 }

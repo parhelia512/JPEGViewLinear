@@ -259,6 +259,7 @@
 #define IDM_TOGGLE_INFO_OVERLAY	12452		// :KeyMap: toggle custom overlay
 #define IDM_CHANGE_FOLDER_LANGUAGE	12453	// :KeyMap: jump between different language folders (varying in endings like " [en]", " [de]", " [ko]")
 #define IDM_OPEN_DEFAULT_EDITOR		12454	// :KeyMap: open image with default registry edit action of this file type
+#define IDM_TOGGLE_AUTO_ZOOM_FIT	12455	// :KeyMap: toggle auto zoom mode "BookMode (Default) <-> Fit " and "Fit (Default) <-> None"
 
 #define IDM_AUTO_ZOOM_NONE	12500		// :KeyMap: set auto zoom mode disabled
 #define IDM_AUTO_ZOOM_FIT_NO_ZOOM	12510		// :KeyMap: set auto zoom mode fit to screen, never zoom
@@ -300,10 +301,6 @@
 #define IDM_PAN_DOWN	15201		// :KeyMap: pan down
 #define IDM_PAN_RIGHT	15202		// :KeyMap: pan right
 #define IDM_PAN_LEFT	15203		// :KeyMap: pan left
-#define IDM_NAVI_COMBO_UP		15204	// :KeyMap: combined naviation - pan up or go to previous image
-#define IDM_NAVI_COMBO_DOWN		15205	// :KeyMap: combined naviation - pan down or go to next image
-#define IDM_NAVI_COMBO_LEFT		15206	// :KeyMap: combined naviation - pan left or go to previous image
-#define IDM_NAVI_COMBO_RIGHT	15207	// :KeyMap: combined naviation - pan right or go to next image
 #define IDM_CONTEXT_MENU	16000		// :KeyMap: display context menu
 
 #define IDM_CROP_SEL		20000

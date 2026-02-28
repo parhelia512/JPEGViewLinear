@@ -362,6 +362,14 @@ CSettingsProvider::CSettingsProvider(void) {
 
 	m_DefaultFixedCropSize = GetSize(_T("DefaultFixedCropSize"), CSize(320, 200));
 
+// -------------------------------------------------------------------------------------------
+// [GF] Custom non-writable ini settings of this mod
+	m_bBookModeLaunchFullscreen = GetBool(_T("BookModeLaunchFullscreen"), true);
+	m_bUseSmoothScrolling = GetBool(_T("SmoothScrolling"), true);
+	m_bSmartPanningKeys = GetBool(_T("SmartPanningKeys"), true);
+	m_bTitleBarUseFileIcon = GetBool(_T("TitleBarUseFileIcon"), true);
+// -------------------------------------------------------------------------------------------
+
 	// read all user commands
 	CString sCmd;
 	int nIndex = 0;
@@ -398,13 +406,6 @@ CSettingsProvider::CSettingsProvider(void) {
 			nGapIndex++;
 		}
 	} while (nGapIndex <= 2);
-	
-/*GF*	MMX and AVX are not supported with linear light processing) */
-/*GF*/	if (m_eCPUAlgorithm == Helpers::CPU_MMX) {
-/*GF*/		m_eCPUAlgorithm = Helpers::CPU_Generic;
-/*GF*/	} else if (m_eCPUAlgorithm == Helpers::CPU_AVX2) {
-/*GF*/		//m_eCPUAlgorithm = Helpers::CPU_SSE;
-/*GF*/	}
 }
 
 CImageProcessingParams CSettingsProvider::LandscapeModeParams(const CImageProcessingParams& templParams) {
@@ -474,15 +475,18 @@ void CSettingsProvider::ReadWriteableINISettings() {
 	m_bShowNavPanel = GetBool(_T("ShowNavPanel"), true);
 
 	m_bHQRS = GetBool(_T("HighQualityResampling"), true);
-	m_bDefaultSelectionMode = GetBool(_T("DefaultSelectionMode"), true);
+	m_bDefaultSelectionMode = GetBool(_T("DefaultSelectionMode"), true);	// [GF] Note: This values is missing from SaveSettings().
 	m_bShowFileName = GetBool(_T("ShowFileName"), false);
 	m_bShowFileInfo = GetBool(_T("ShowFileInfo"), false);
 	m_bKeepParams = GetBool(_T("KeepParameters"), false);
 	m_eSlideShowTransitionEffect = Helpers::ConvertTransitionEffectFromString(GetString(_T("SlideShowTransitionEffect"), _T("")));
 
-/*GF	Custom Settings of this mod */	
-/*GF*/	m_nBookPageVisibleHeight = GetInt(_T("BookPageVisibleHeight"), 75, 1, 100);
-/*GF*/	m_bTitleBarUseFileIcon = GetBool(_T("TitleBarUseFileIcon"), false);
+// -------------------------------------------------------------------------------------------
+// [GF] Custom writable ini settings of this mod
+
+	m_nBookModePageHeight = GetInt(_T("BookModePageHeight"), 122, 100, 1000);
+
+// -------------------------------------------------------------------------------------------
 }
 
 void CSettingsProvider::SaveSettings(const CImageProcessingParams& procParams, 
@@ -491,6 +495,8 @@ void CSettingsProvider::SaveSettings(const CImageProcessingParams& procParams,
 									 Helpers::EAutoZoomMode eAutoZoomMode, Helpers::EAutoZoomMode eAutoZoomModeFullScreen,
 									 bool bShowNavPanel, bool bShowFileName, bool bShowFileInfo,
 									 Helpers::ETransitionEffect eSlideShowTransitionEffect) {
+/* Debugging */	::OutputDebugStringW(TEXT("CSettingsProvider::SaveSettings()"));
+
 	MakeSureUserINIExists();
 
 	WriteDouble(_T("Contrast"), procParams.Contrast);
@@ -728,9 +734,6 @@ LPCTSTR CSettingsProvider::ReadIniString(LPCTSTR key, LPCTSTR fileName, IniHashM
 	if (keyMap == NULL) {
 		keyMap = new IniHashMap();
 		ReadIniFile(m_sIniNameUser, keyMap, pBuffer);
-/*GF*/	TCHAR debugtext[2048];
-/*GF*/	swprintf(debugtext,1024,TEXT("CSettingsProvider::ReadIniString(key=%s, filename=%s) after IniHashMap()   m_sIniNameUser=%s   m_sIniNameGlobal=%s"), key, fileName, m_sIniNameUser, m_sIniNameGlobal);
-/*GF*/	::OutputDebugStringW(debugtext);
 	}
 	hash_map<LPCTSTR, LPCTSTR, CHashCompareLPCTSTR>::const_iterator iter;
 	iter = keyMap->find(key);

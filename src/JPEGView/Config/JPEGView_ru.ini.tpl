@@ -688,18 +688,26 @@ Units=auto
 ; * These settings have been added in JPEGViewL
 ; *****************************************************************************
 
-; If the image file path contains "\manga\" or "\comics\", there's different behaviour for image placement and zoom:
-; Images with these folder names in their path will
-;		- get opened in fullscreen mode on launch.
-;		- react slightly different to navigation input of 'left', 'right', 'up', 'down' arrow keys.
-;		- be focused on the top right corner (or the bottom left, going backwards), assuming RTL.
-;		- be zoomed to match window width for double pages (when image width is larger than height).
-;		- be zoomed to comply with the 'BookPageVisibleHeight' value for single pages (when image width is smaller than height).
+; Sources like CBZ/CBR/CB7 files or files in folders with "\manga\" or "\comics\" in their path have different behaviour for image placement and zoom:
+;	- They get opened in fullscreen mode on launch. Controlled by setting "BookModeLaunchFullscreen".
+;	- They react slightly different to navigation input of 'left', 'right', 'up', 'down' arrow keys.
+;	- They get centered on the top half of the image when moving forward and at the bottom half when moving backwards.
+;	- For double pages (e.g. when image width is larger than height), they get sized to fit the window width.
+;	- For single pages (e.g. when image width is smaller than height), their images get scaled by the percent value of the setting 'BookModePageHeight'.
 
-; What percentage of a book's single page height should be visible within the window. [1-100. Default: 75]
-BookPageVisibleHeight=82
+; How much larger than window height should book type sources be zoomed to. [100-1000. Default: 122, meaning 122% of window height]
+BookModePageHeight=122
 
-; Use file type icon as window icon
+; Launch book type (CBZ/CBR/CB7 files and files in folders with "\manga\" or "\comics\" in their path fullscreen? [true/false. Default: true]
+BookModeLaunchFullscreen=true
+
+; Enable smooth scrolling on panning keys (IDM_PAN_UP, IDM_PAN_DOWN, IDM_PAN_LEFT, IDM_PAN_RIGHT)? [true/false. Default: true]
+SmoothScrolling=true
+
+; Should the panning keys navigate to next/previous image, when panning isn't available? [true/false. Default: true]
+SmartPanningKeys=true
+
+; Show current file type's icon instead of JpegView application icon in title bar? [true/false. Default: true]
 TitleBarUseFileIcon=true
 
 

@@ -450,8 +450,8 @@ void CResizeFilter::CalculateFilterParams(EFilterType eFilter) {
 		m_nFilterLen = min(MAX_FILTER_LEN, m_nFilterLen);
 		m_nFilterOffset = (m_nFilterLen - 1)/2;
 
-		TCHAR debugtext[512];
-		swprintf(debugtext,255,TEXT("[JpegView] CalculateFilterParams() dFactor=%f  m_dMultX=%f  m_nFilterLen=%d  m_nFilterOffset=%d"), dFactor, m_dMultX, m_nFilterLen, m_nFilterOffset);
+		TCHAR debugtext[1024];
+		swprintf(debugtext,1024,TEXT("[JpegView] CalculateFilterParams() dFactor=%f  m_dMultX=%f  m_nFilterLen=%d  m_nFilterOffset=%d"), dFactor, m_dMultX, m_nFilterLen, m_nFilterOffset);
 		::OutputDebugStringW(debugtext);
 		}
 */
@@ -463,9 +463,9 @@ void CResizeFilter::CalculateFilterParams(EFilterType eFilter) {
 		m_nFilterLen = min(MAX_FILTER_LEN, m_nFilterLen);
 		m_nFilterOffset = (m_nFilterLen - 1)/2;
 
-		TCHAR debugtext[512];
-		swprintf(debugtext,255,TEXT("[JpegView] CalculateFilterParams() dFactor=%f  m_dMultX=%f  m_nFilterLen=%d  m_nFilterOffset=%d"), dFactor, m_dMultX, m_nFilterLen, m_nFilterOffset);
-		::OutputDebugStringW(debugtext);
+//		TCHAR debugtext[1024];
+//		swprintf(debugtext,1024,TEXT("[JpegView] CalculateFilterParams() dFactor=%f  m_dMultX=%f  m_nFilterLen=%d  m_nFilterOffset=%d"), dFactor, m_dMultX, m_nFilterLen, m_nFilterOffset);
+//		::OutputDebugStringW(debugtext);
 		}
 	}
 

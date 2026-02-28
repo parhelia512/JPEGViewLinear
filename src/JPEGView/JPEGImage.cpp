@@ -104,6 +104,11 @@ CJPEGImage::CJPEGImage(int nWidth, int nHeight, void* pPixels, void* pEXIFData, 
 	m_nPixelHash = nJPEGHash;
 	m_eImageFormat = eImageFormat;
 	m_bIsAnimation = bIsAnimation;
+// For containers like CBZ, the meaning of "bIsAnimation" is actually "bMultipleFiles"
+// It shouldn't really be needed for anything, since that check is done in ContainerHasMultipleImages with (m_nNumberOfFrames > 1)
+// Setting m_bIsAnimation to "false" fixes several issues, all caused by IsAnimation() checks.
+/*GF*/	if (eContainerFormat != IF_Unknown)
+/*GF*/		m_bIsAnimation = false;
 	m_nFrameIndex = nFrameIndex;
 	m_nNumberOfFrames = nNumberOfFrames;
 	m_nFrameTimeMs = nFrameTimeMs;

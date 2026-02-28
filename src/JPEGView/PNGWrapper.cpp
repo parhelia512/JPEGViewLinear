@@ -60,7 +60,7 @@ struct PngReader::png_cache {
 	unsigned char* p_image;
 	unsigned char* p_frame;
 	unsigned char* p_temp;
-	unsigned int size;
+	size_t size;
 	unsigned int width;
 	unsigned int height;
 	unsigned int channels;
@@ -72,18 +72,6 @@ struct PngReader::png_cache {
 };
 
 PngReader::png_cache PngReader::cache = { 0 };
-
-// PNG decoder static cache lock (RAII pattern)
-class CPngLock {
-public:
-	CPngLock() { ::InitializeCriticalSection(&m_cs); }
-	~CPngLock() { ::DeleteCriticalSection(&m_cs); }
-	void Lock() { ::EnterCriticalSection(&m_cs); }
-	void Unlock() { ::LeaveCriticalSection(&m_cs); }
-private:
-	CRITICAL_SECTION m_cs;
-};
-static CPngLock s_pngLock;
 
 #ifdef PNG_APNG_SUPPORTED
 void BlendOver(unsigned char** rows_dst, unsigned char** rows_src, unsigned int x, unsigned int y, unsigned int w, unsigned int h)
@@ -122,16 +110,20 @@ void BlendOver(unsigned char** rows_dst, unsigned char** rows_src, unsigned int 
 
 void* PngReader::ReadNextFrame(void** exif_chunk, png_uint_32* exif_size)
 {
+
+
 	unsigned int j;
 	if (exif_chunk != NULL && exif_size != NULL) {
 		png_get_eXIf_1(cache.png_ptr, cache.info_ptr, exif_size, (png_bytep*)exif_chunk);
 	}
+
 #ifdef PNG_APNG_SUPPORTED
 	if (png_get_valid(cache.png_ptr, cache.info_ptr, PNG_INFO_acTL))
 	{
 		png_read_frame_head(cache.png_ptr, cache.info_ptr);
 		png_get_next_frame_fcTL(cache.png_ptr, cache.info_ptr, &cache.w0, &cache.h0, &cache.x0, &cache.y0, &cache.delay_num, &cache.delay_den, &cache.dop, &cache.bop);
 	}
+
 	if (cache.frame_index == cache.first)
 	{
 		cache.bop = PNG_BLEND_OP_SOURCE;
@@ -140,7 +132,6 @@ void* PngReader::ReadNextFrame(void** exif_chunk, png_uint_32* exif_size)
 	}
 #endif
 	png_read_image(cache.png_ptr, cache.rows_frame);
-
 #ifdef PNG_APNG_SUPPORTED
 	if (cache.dop == PNG_DISPOSE_OP_PREVIOUS)
 		memcpy(cache.p_temp, cache.p_image, cache.size);
@@ -155,6 +146,7 @@ void* PngReader::ReadNextFrame(void** exif_chunk, png_uint_32* exif_size)
 	void* pixels = malloc(cache.width * cache.height * cache.channels);
 	if (pixels == NULL)
 		return NULL;
+
 	for (j = 0; j < cache.height; j++)
 		memcpy((char*)pixels + j * cache.width * cache.channels, cache.rows_image[j], cache.width * cache.channels);
 
@@ -166,6 +158,7 @@ void* PngReader::ReadNextFrame(void** exif_chunk, png_uint_32* exif_size)
 			for (j = 0; j < cache.h0; j++)
 				memset(cache.rows_image[j + cache.y0] + cache.x0 * 4, 0, cache.w0 * 4);
 #endif
+
 	cache.frame_index++;
 	cache.frame_index %= cache.frame_count;
 	return pixels;
@@ -313,20 +306,13 @@ void* PngReader::ReadImage(int& width,
 	void* buffer,
 	size_t sizebytes)
 {
-	// Lock PNG decoder (thread safety)
-	s_pngLock.Lock();
-
 	exif_chunk = NULL;
 	if (!cache.buffer) {
-		if (sizebytes < 8) {
-			s_pngLock.Unlock();
+		if (sizebytes < 8)
 			return NULL;
-		}
 		cache.buffer = malloc(sizebytes-8);
-		if (!cache.buffer) {
-			s_pngLock.Unlock();
+		if (!cache.buffer)
 			return NULL;
-		}
 		// copy everything except the PNG signature (first 8 bytes)
 		memcpy(cache.buffer, (char*)buffer+8, sizebytes-8);
 		cache.buffer_size = sizebytes-8;
@@ -336,7 +322,6 @@ void* PngReader::ReadImage(int& width,
 	if (!cache.png_ptr || cache.frame_index == 0) {
 		DeleteCacheInternal(false);
 		if (!buffer || !BeginReading(buffer, sizebytes, outOfMemory)) {
-			s_pngLock.Unlock();
 			return NULL;
 		}
 
@@ -372,8 +357,6 @@ void* PngReader::ReadImage(int& width,
 	}
 	if (!has_animation)
 		DeleteCache();
-
-	s_pngLock.Unlock();
 	return pixels;
 }
 
@@ -398,9 +381,7 @@ void PngReader::DeleteCacheInternal(bool free_buffer)
 }
 
 void PngReader::DeleteCache() {
-	s_pngLock.Lock();
 	DeleteCacheInternal(true);
-	s_pngLock.Unlock();
 }
 
 bool PngReader::MustUseLibpng(const void* bufferIn, size_t sizebytes) {

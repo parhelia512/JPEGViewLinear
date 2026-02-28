@@ -183,7 +183,10 @@ public:
 	// Get the file name (without path) of the user INI file
 	LPCTSTR GetINIFileTitle() { return m_sIniFileTitle; }
 
-/*GF*/	int BookPageVisibleHeight() { return m_nBookPageVisibleHeight; }
+/*GF*/	int BookModePageHeight() { return m_nBookModePageHeight; }
+/*GF*/	bool BookModeLaunchFullscreen() { return m_bBookModeLaunchFullscreen; }
+/*GF*/	bool UseSmoothScrolling() { return m_bUseSmoothScrolling; }
+/*GF*/	bool SmartPanningKeys() { return m_bSmartPanningKeys; }
 /*GF*/	bool TitleBarUseFileIcon() { return m_bTitleBarUseFileIcon; }
 
 private:
@@ -341,6 +344,9 @@ private:
 
 	CSettingsProvider(void);
 
-/*GF*/	int m_nBookPageVisibleHeight;
+/*GF*/	int m_nBookModePageHeight;
+/*GF*/	bool m_bBookModeLaunchFullscreen;
+/*GF*/	bool m_bUseSmoothScrolling;
+/*GF*/	bool m_bSmartPanningKeys;
 /*GF*/	bool m_bTitleBarUseFileIcon;
 };

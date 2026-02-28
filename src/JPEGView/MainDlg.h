@@ -396,9 +396,9 @@ private:
 	void StopAnimation();
 	void ToggleAlwaysOnTop();
 
-/*################################################################*/
-/* Custom functions and variables of the linear scaling mod       */
-/*################################################################*/
+/*##################################################################*/
+/* Custom private functions and variables of the linear scaling mod */
+/*##################################################################*/
 	HMODULE m_hmodDwmapi;
 	BOOL m_bDWMenabled;
 	typedef HRESULT (WINAPI *MyDwmIsCompositionEnabledType)(BOOL*);
@@ -408,12 +408,14 @@ private:
 	WINDOWPLACEMENT m_storedWindowPlacement2;	// position for windowed mode
 	bool m_bShowInfo;
 	bool m_bPanTimerActive;
-	int m_nBookPageVisibleHeight;
+	int m_nBookModePageHeight;
 	CPoint m_offsets_custom;
 
 	void ChangeFolderLanguage();
 	void OpenDefaultEditor();
 
 	CString ReplaceNoCase(LPCTSTR instr,LPCTSTR oldstr,LPCTSTR newstr);
+	CString LoadBookmark(LPCTSTR sFilePath);
 	void SaveBookmark();
+	bool IsBookModeFile(LPCTSTR sFilePath);
 };

@@ -45,15 +45,15 @@ CSize GetImageRect(int nWidth, int nHeight, int nScreenWidth, int nScreenHeight,
 	bFillCrop = (eAutoZoomMode == ZM_FillScreenNoZoom || eAutoZoomMode == ZM_FillScreen);
 	bLimitAR = (eAutoZoomMode == ZM_FillScreenNoZoom);
 	CSettingsProvider& sp = CSettingsProvider::This();
-	int nBookPageVisibleHeight = sp.BookPageVisibleHeight();
+	int nBookModePageHeight = sp.BookModePageHeight();
 
 	if (eAutoZoomMode == ZM_BookMode) {
 		double dImageAR = (double)nWidth/nHeight;
-		if (dImageAR >= 1.0) {					// If it's wider than high, assume a double page
-			dZoom = (double)nScreenWidth/nWidth;			// ... and Fit to screen width
-		} else {								// Else, assume a single page
-			double dAR1 = (((double)nHeight/100.0) * nBookPageVisibleHeight) / (double)nScreenHeight;	// Zoom to user specified height
-			double dAR2 = (double)nWidth/nScreenWidth;														// ...but limit maximum image width to window width
+		if (dImageAR >= 1.0) {						// If it's wider than high, assume a double page
+			dZoom = (double)nScreenWidth/nWidth;	//    ... and Fit to screen width
+		} else {									// Else, assume a single page
+			double dAR1 = ((double)(nHeight*100) / (nBookModePageHeight * nScreenHeight));	// Zoom to user specified height
+			double dAR2 = (double)nWidth/nScreenWidth;										//    ...but limit maximum image width to window width
 			double dAR = max(dAR1, dAR2);
 			dZoom = 1.0/dAR;
 		}
@@ -907,6 +907,7 @@ __int64 GetFileSize(HANDLE hFile) {
 int GetFrameIndex(CJPEGImage* pImage, bool bNext, bool bPlayAnimation, bool & switchImage) {
 	bool isMultiFrame = pImage != NULL && pImage->NumberOfFrames() > 1;
 	bool isAnimation = pImage != NULL && pImage->IsAnimation();
+	bool isContainer = pImage != NULL && pImage->IsContainer();
 	int nFrameIndex = 0;
 	switchImage = true;
 	if (isMultiFrame) {
@@ -921,6 +922,12 @@ int GetFrameIndex(CJPEGImage* pImage, bool bNext, bool bPlayAnimation, bool & sw
 				}
 			} else {
 				switchImage = true;
+				nFrameIndex = 0;
+			}
+		} else if (isContainer) {
+			if (nFrameIndex < 0) {
+				nFrameIndex = pImage->NumberOfFrames() - 1;
+			} else if (nFrameIndex > pImage->NumberOfFrames() - 1) {
 				nFrameIndex = 0;
 			}
 		} else {
@@ -940,8 +947,7 @@ int GetFrameIndex(CJPEGImage* pImage, bool bNext, bool bPlayAnimation, bool & sw
 // Gets an index string of the form [a/b] for multiframe images, empty string for single frame images
 CString GetMultiframeIndex(CJPEGImage* pImage) {
 	bool isMultiFrame = pImage != NULL && pImage->NumberOfFrames() > 1;
-	if (isMultiFrame && (!pImage->IsAnimation() || pImage->ContainerHasMultipleImages())) {
-		// For some reason, containers like CBZ files return IsAnimation() == true
+	if (isMultiFrame && !pImage->IsAnimation()) {
 		CString s;
 		s.Format(_T(" [%d/%d]"), pImage->FrameIndex() + 1, pImage->NumberOfFrames());
 		return s;
