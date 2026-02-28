@@ -688,13 +688,16 @@ LRESULT CMainDlg::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
     
     		unsigned int iRealWidth = unsigned int (m_dZoom * (m_pCurrentImage->OrigWidth()));
     		unsigned int iRealHeight = unsigned int (m_dZoom * (m_pCurrentImage->OrigHeight()));
+			
+			
     
     		LPCTSTR sFullPath = CurrentFileName(false);
-    		if (sFullPath != NULL)
-    			_stprintf_s(infoText,4096,_T("%s\nFile Size:   %d Bytes\nImage Size:  %d x %d\nZoomed Size: %d x %d   (Zoom Factor: %f)\nWindow Size: %d x %d\n\nCPU-Threads: %d\nCPU-Algorithm: %s\nDownsampling-Filter: %s\n\nLoading Image:  %.2f ms\nScaling Image:  %.2f ms\nOnPaint GetDIB: %.2f ms"),sFullPath,(UINT)Helpers::GetFileSize(sFullPath),m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height(),iNumThreads,sCPU,sFilter,m_pCurrentImage->GetLoadTickCount(), m_pCurrentImage->LastOpTickCount(), t2-t1);
-    		else
+    		if (sFullPath != NULL) {
+    			_stprintf_s(infoText,4096,_T("%s\nFile Size:   %s\nImage Size:  %d x %d\nZoomed Size: %d x %d   (Zoom Factor: %f)\nWindow Size: %d x %d\n\nCPU-Threads: %d\nCPU-Algorithm: %s\nDownsampling-Filter: %s\n\nLoading Image:  %.2f ms\nScaling Image:  %.2f ms\nOnPaint GetDIB: %.2f ms"),sFullPath,Helpers::FormatFileSize(Helpers::GetFileSize(sFullPath)),m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height(),iNumThreads,sCPU,sFilter,m_pCurrentImage->GetLoadTickCount(), m_pCurrentImage->LastOpTickCount(), t2-t1);
+    		} else {
     			_stprintf_s(infoText,4096,_T("\n\nImage Size:  %d  x%d\nZoomed Size: %d x %d   (Zoom Factor: %f)\nWindow Size: %d x %d\n\nCPU-Threads: %d\nCPU-Algorithm: %s\nDownsampling-Filter: %s\n\nLoading Image:  %.2f ms\nScaling Image:  %.2f ms\nOnPaint GetDIB: %.2f ms"),m_pCurrentImage->OrigWidth(),m_pCurrentImage->OrigHeight(),iRealWidth,iRealHeight,m_dZoom,m_clientRect.Width(),m_clientRect.Height(),iNumThreads,sCPU,sFilter,m_pCurrentImage->GetLoadTickCount(), m_pCurrentImage->LastOpTickCount(), t2-t1);
-    
+			}
+
     		HFONT hFont = CreateFont(25,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,FF_DONTCARE,TEXT("CONSOLAS"));
     		dc.SelectFont(hFont);
     		dc.SetBkColor(RGB(0,0,0));

@@ -331,6 +331,6 @@ namespace Helpers {
 		CRITICAL_SECTION & m_cs;
 	};
 
-	// [GF] Used in "SettingsProvider.cpp" to set "m_nNumCores"
-	int NumConcurrentThreads(void);
+	int NumConcurrentThreads(void);		// [GF] Used in "SettingsProvider.cpp" to set "m_nNumCores"
+	CString FormatFileSize(__int64 filesize);
 }

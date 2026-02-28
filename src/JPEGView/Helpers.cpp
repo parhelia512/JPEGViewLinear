@@ -1035,4 +1035,25 @@ int NumConcurrentThreads(void) {
 
 	return processor_count;
 }
+
+CString FormatFileSize(__int64 nFileSize) {
+	CString sFileSize = _T("");
+	if (nFileSize > 0) {
+		if (nFileSize <= 1024) {
+			sFileSize.Format(_T("%d Bytes"), nFileSize);
+		} else {
+			const TCHAR* units[] = { _T("Bytes"), _T("KiB"), _T("MiB"), _T("GiB"), _T("TiB"), _T("PiB"), _T("EiB"), _T("ZiB"), _T("YiB") };
+			double value = nFileSize;
+			int exponent = 0;
+			while (value >= 1024 && exponent < sizeof(units) / sizeof(units[0]) - 1) {
+				value /= 1024.0;
+				exponent++;
+			}
+			sFileSize.Format(_T("%.1f %s"), value, units[exponent]);
+		}
+	}
+	
+	return sFileSize;
+}
+
 }
