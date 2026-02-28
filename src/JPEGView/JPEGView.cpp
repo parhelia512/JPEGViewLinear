@@ -15,18 +15,33 @@
 
 CAppModule _Module;
 
-static HWND _HWNDOtherInstance = NULL;
+static bool _bFileLoadedByExistingInstance = false;
 
 static BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 	const int BUF_LEN = 255;
 	TCHAR buff[BUF_LEN + 1];
 	buff[BUF_LEN] = 0;
 	::GetWindowText(hwnd, (LPTSTR)&buff, BUF_LEN);
+
 	if (_tcsstr(buff, _T(" - JPEGView")) != NULL) {
-		_HWNDOtherInstance = hwnd;
-		return FALSE;
+		// An already existing instance was found -> send our file path to it and wait how it reacts.
+		// If it returns NULL, it doesn't want that file and we can open it ourselves.
+		// If it returns KEY_MAGIC, it will handle that file and we can close again.
+
+		COPYDATASTRUCT copyData{ 0 };
+		copyData.dwData = KEY_MAGIC;
+		copyData.cbData = (lstrlen((LPCTSTR)lParam) + 1) * sizeof(TCHAR);
+		copyData.lpData = (LPVOID)(LPCTSTR)lParam;
+		ULONG_PTR result = 0;
+		PDWORD_PTR resultPtr = &result;
+		LRESULT res = ::SendMessageTimeout(hwnd, WM_COPYDATA, 0, (LPARAM)&copyData, 0, 250, resultPtr);
+
+		if (*resultPtr == (ULONG_PTR)KEY_MAGIC) {
+			_bFileLoadedByExistingInstance = true;
+			return FALSE;	// stop enumerating windows
+		}
 	}
-	return TRUE;
+	return TRUE;		// continue enumerating windows
 }
 
 static CString ParseCommandLineForStartupFile(LPCTSTR sCommandLine) { 
@@ -211,29 +226,19 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	int nTransitionTime = ParseCommandLineForTransitionTime(lpstrCmdLine);
 	int nDisplayMonitor = ParseCommandLineForDisplayMonitor(lpstrCmdLine);
 
-	// Searches for other instances and terminates them
-	bool bFileLoadedByExistingInstance = false;
+	// Searches for other instances and asks them if the want handle our startup file instead
 	HANDLE hMutex = ::CreateMutex(NULL, FALSE, _T("JPVMtX2869"));
 	if (::GetLastError() == ERROR_ALREADY_EXISTS) {
-		::EnumWindows((WNDENUMPROC)EnumWindowsProc, 0);
-		if (_HWNDOtherInstance != NULL) {
-/*
-			// Other instance found, send the filename to be loaded to this instance
-			COPYDATASTRUCT copyData{ 0 };
-			copyData.dwData = KEY_MAGIC;
-			copyData.cbData = (sStartupFile.GetLength() + 1) * sizeof(TCHAR);
-			copyData.lpData = (LPVOID)(LPCTSTR)sStartupFile;
-			ULONG_PTR result = 0;
-			PDWORD_PTR resultPtr = &result;
-			LRESULT res = ::SendMessageTimeout(_HWNDOtherInstance, WM_COPYDATA, 0, (LPARAM)&copyData, 0, 250, resultPtr);
-			bFileLoadedByExistingInstance = *resultPtr == (ULONG_PTR)KEY_MAGIC;
-*/
-		}
+		::EnumWindows((WNDENUMPROC)EnumWindowsProc, (LPARAM)(LPCTSTR)sStartupFile);
 	}
+
+/* Debugging */	TCHAR debugtext[1024];
+/* Debugging */	swprintf(debugtext,1024,TEXT("_tWinMain() 1:   sStartupFile='%s'   _bFileLoadedByExistingInstance=%d"), sStartupFile, _bFileLoadedByExistingInstance);
+/* Debugging */	::OutputDebugStringW(debugtext);
 
 	int nRet = 0;
 	//Run application
-	if (!bFileLoadedByExistingInstance) {
+	if (!_bFileLoadedByExistingInstance) {
 		// Initialize GDI+
 		Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 		ULONG_PTR gdiplusToken;
