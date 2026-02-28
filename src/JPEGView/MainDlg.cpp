@@ -379,6 +379,7 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	int nFrameIndex = 0;	// Will stay zero if no bookmarks are found.
 
+	// [GF] Same code as in OpenFile(). Todo: combine into function?
 	if (!m_sStartupFile.IsEmpty()) {
 		if (IsBookModeFile(m_sStartupFile)) {
 			m_eAutoZoomModeFullscreen = Helpers::ZM_BookMode;
@@ -412,7 +413,6 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_clientRect = m_bFullScreenMode ? m_monitorRect : CMultiMonitorSupport::GetDefaultClientRectInWindowMode(sp.AutoFullScreen());
 
 // Note: With AutoFullScreen, at this point m_clientRect will be monitorRect even when m_bFullScreenMode==0
-
 
 /*GF*/	swprintf(debugtext,1024,TEXT("OnInitDialog() m_bKeepParams=%d m_bFullScreenMode = %d  AutoFullScreen = %d m_clientRect.Width=%d m_clientRect.Height=%d"), m_bKeepParams, m_bFullScreenMode, sp.AutoFullScreen(), m_clientRect.Width(), m_clientRect.Height());
 /*GF*/	::OutputDebugStringW(debugtext);
@@ -2272,8 +2272,7 @@ void CMainDlg::ExecuteCommand(int nCommand) {
 				LPCTSTR sFilePath = CurrentFileName(false);
 
 				if (sFilePath != NULL) {
-					LPCTSTR pExt = PathFindExtension(sFilePath);
-					if (StrStrI(sFilePath,TEXT("\\manga\\")) || StrStrI(sFilePath,TEXT("\\comics\\")) || (lstrcmpi(pExt,_T(".cbz")) == 0) || (lstrcmpi(pExt,_T(".cbr")) == 0) || (lstrcmpi(pExt,_T(".cb7")) == 0)) {
+					if (IsBookModeFile(sFilePath)) {
 						bIsBookModeFile = true;
 					}
 				}
@@ -2994,17 +2993,41 @@ bool CMainDlg::OpenFileWithDialog(bool bFullScreen, bool bAfterStartup) {
 void CMainDlg::OpenFile(LPCTSTR sFileName, bool bAfterStartup) {
 	StopMovieMode();
 	StopAnimation();
+
+	// [GF] Save Bookmark of currently open file
+	SaveBookmark();
+	
 	// recreate file list based on image opened
 	Helpers::ESorting eOldSorting = m_pFileList->GetSorting();
 	bool oOldAscending = m_pFileList->IsSortedAscending();
 	delete m_pFileList;
 
-	// [GF] Recognize Book type sources and adjust zoom mode accordingly
+	// [GF] Recognize Book type sources & load bookmark and adjust zoom mode accordingly.
+	int nFrameIndex = 0;
 	if (sFileName != NULL) {
-		LPCTSTR pExt = PathFindExtension(sFileName);
-		if (StrStrI(sFileName,TEXT("\\manga\\")) || StrStrI(sFileName,TEXT("\\comics\\")) || (lstrcmpi(pExt,_T(".cbz")) == 0) || (lstrcmpi(pExt,_T(".cbr")) == 0) || (lstrcmpi(pExt,_T(".cb7")) == 0)) {
+		if (IsBookModeFile(sFileName)) {
 			m_eAutoZoomModeFullscreen = Helpers::ZM_BookMode;
 			m_eAutoZoomModeWindowed = Helpers::ZM_BookMode;
+
+			CString sBookmark = LoadBookmark(sFileName);
+			if (!sBookmark.IsEmpty()) {
+				std::wregex regexNeedle(_T("^\\d+$"));
+				if (std::regex_match(sBookmark.GetString(), regexNeedle)) {
+					// Bookmark is a pure number, so wasn't derived from a file name but from a container's FrameIndex()
+					nFrameIndex = _wtoi(sBookmark) - 1;
+				} else {
+					// Bookmark point to an image file. Check if exits and ask the user if the launch that instead.
+							
+					TCHAR sParentDir[MAX_PATH];
+					lstrcpy(sParentDir,sFileName);
+					PathRemoveFileSpec(sParentDir);
+					
+					CString sBookmarkPath = sParentDir + CString(_T("\\")) + sBookmark;
+					if (::PathFileExists(sBookmarkPath)) {
+						//sFileName = sBookmarkPath;
+					}
+				}
+			}
 		} else {
 			CSettingsProvider& sp = CSettingsProvider::This();
 			m_eAutoZoomModeWindowed = sp.AutoZoomMode();
@@ -3019,7 +3042,7 @@ void CMainDlg::OpenFile(LPCTSTR sFileName, bool bAfterStartup) {
 	m_pJPEGProvider->NotifyNotUsed(m_pCurrentImage);
 	m_pJPEGProvider->ClearAllRequests();
 	m_pCurrentImage = m_pJPEGProvider->RequestImage(m_pFileList, CJPEGProvider::FORWARD,
-		m_pFileList->Current(), 0, CreateProcessParams(!m_bFullScreenMode && (bAfterStartup || IsAdjustWindowToImage())),
+		m_pFileList->Current(), nFrameIndex, CreateProcessParams(!m_bFullScreenMode && (bAfterStartup || IsAdjustWindowToImage())),
 		m_bOutOfMemoryLastImage, m_bExceptionErrorLastImage);
 	m_nLastLoadError = GetLoadErrorAfterOpenFile();
 	if (bAfterStartup) CheckIfApplyAutoFitWndToImage(false);
@@ -4674,8 +4697,7 @@ void CMainDlg::SaveBookmark() {
 	bool bIsEndpoint = true;
 
 	if (sFilePath != NULL) {
-		LPCTSTR sFileExt = PathFindExtension(sFilePath);
-		if (StrStrI(sFilePath,TEXT("\\manga\\")) || StrStrI(sFilePath,TEXT("\\comics\\")) || (lstrcmpi(sFileExt,_T(".cbz")) == 0) || (lstrcmpi(sFileExt,_T(".cbz")) == 0) || (lstrcmpi(sFileExt,_T(".cb7")) == 0)) {
+		if (IsBookModeFile(sFilePath)) {
 			CString BookmarkFolderPath = CString(Helpers::JPEGViewAppDataPath());
 			CString BookmarkFilePath = CString(Helpers::JPEGViewAppDataPath()) + TEXT("Bookmarks.ini");
 
@@ -4689,7 +4711,7 @@ void CMainDlg::SaveBookmark() {
 			if (::PathFileExists(BookmarkFolderPath)) {
 				TCHAR sKeyname[MAX_PATH];
 				lstrcpy(sKeyname,sFilePath);
-
+				LPCTSTR sFileExt = PathFindExtension(sFilePath);
 				if ((lstrcmpi(sFileExt,_T(".cbz")) == 0) || (lstrcmpi(sFileExt,_T(".cbr")) == 0) || (lstrcmpi(sFileExt,_T(".cb7")) == 0)) {
 					PathRemoveExtension(sKeyname);	// Removes the file name extension from a path, if one is present.
 					PathStripPath(sKeyname);
