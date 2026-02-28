@@ -1,0 +1,10 @@
+name: Build Test x64 (Debug)
+
+on: [push, pull_request]
+
+jobs:
+  call-workflow-build:
+    uses: ./.github/workflows/workflow-build-wtl-cache.yml
+    with:
+      platform-arch: x64
+      build-config: Debug
