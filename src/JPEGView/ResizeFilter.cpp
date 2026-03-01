@@ -37,7 +37,7 @@ static void NormalizeFilter(int16* pFilter, int nLen) {
 // Filter kernel evaluation
 //////////////////////////////////////////////////////////////////////////////////////
 
-// Cubic Filter Family: Mitchell–Netravali filters (BC-splines)
+// Cubic Filter Family: Mitchell-Netravali filters (BC-splines)
 
 // Hermite (B=0, C=0)
 static inline double EvaluateCore_Hermite(double dX)

@@ -1,4 +1,4 @@
-# JPEGViewL (JPEGViewLinear)
+# JPEGView_L
 
 ## Core differences to the original version
 

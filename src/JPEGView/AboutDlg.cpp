@@ -90,7 +90,6 @@ LRESULT CAboutDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_richEdit.SetEventMask(ENM_LINK);
 
 	// From: https://github.com/aviscaerulea/jpegview-nt.git
-	// "README" の部分をリンクとして設定
 	FINDTEXT ft;
 	ft.chrg.cpMin = 0;
 	ft.chrg.cpMax = -1;
@@ -109,7 +108,6 @@ LRESULT CAboutDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		cf.dwEffects = CFE_LINK;
 		m_richEdit.SendMessage(EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 
-		// 選択を解除
 		cr.cpMin = 0;
 		cr.cpMax = 0;
 		m_richEdit.SendMessage(EM_EXSETSEL, 0, (LPARAM)&cr);
@@ -141,7 +139,6 @@ LRESULT CAboutDlg::OnLinkClicked(WPARAM wParam, LPNMHDR lpnmhdr, BOOL& bHandled)
 		CString sReadmeFileName = GetReadmeFileName();
 		if (_tcscmp(pTextLink, _T("README")) == 0) {
 			// From: https://github.com/aviscaerulea/jpegview-nt.git
-			// README リンクの場合は readme.html を開く
 			::ShellExecute(m_hWnd, _T("open"), CString(CSettingsProvider::This().GetEXEPath()) + _T("\\") + sReadmeFileName,
 				NULL, CSettingsProvider::This().GetEXEPath(), SW_SHOW);
 		} else if (_tcsstr(pTextLink, sReadmeFileName) != NULL) {
