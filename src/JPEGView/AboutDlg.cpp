@@ -24,9 +24,9 @@ static LPCTSTR GetSIMDModeString() {
 
 static CString GetReadmeFileName() {
 	// Check if there is a localized version of the readme.html file
-	CString sReadmeFileName = CNLS::GetLocalizedFileName(_T("doc\\"), _T("readme"), _T("html"), CSettingsProvider::This().Language());
+	CString sReadmeFileName = CNLS::GetLocalizedFileName(_T(""), _T("readme"), _T("html"), CSettingsProvider::This().Language());
 	if (::GetFileAttributes(CString(CSettingsProvider::This().GetEXEPath()) + sReadmeFileName) == INVALID_FILE_ATTRIBUTES) {
-		sReadmeFileName = _T("doc\\readme.html");
+		sReadmeFileName = _T("readme.html");
 	}
 	return sReadmeFileName;
 }
@@ -84,7 +84,7 @@ LRESULT CAboutDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	m_richEdit.SetWindowText(CString(CNLS::GetString(_T("Licensed under the GNU general public license (GPL), see readme file for details"))) + 
 		_T(": README\n\n") +
 		CNLS::GetString(_T("Home page of this fork")) +
-		_T(":\nhttps://github.com/KrokusPokus/JPEGViewL_Testing\n\n") +
+		_T(":\nhttps://github.com/KrokusPokus/JPEGView_L_Testing\n\n") +
 		CNLS::GetString(_T("Home page of the original project")) + 
 		_T(":\nhttps://github.com/sylikc/jpegview"));
 	m_richEdit.SetEventMask(ENM_LINK);
