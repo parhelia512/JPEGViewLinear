@@ -2,16 +2,25 @@
 
 ## Core differences to the original version 
 
-* Up- and downsamples images in linear space. This is crucial for lineart, where lines and edges otherwise come out too dark and screentones show moiree. While many of the big image editing tools like Photoshop and GIMP have been using linear light scaling for years, there currently seems to exist no plain image viewer giving correct output.
+* Up- and downsamples images in linear space. This is crucial for lineart, where lines and edges otherwise come out too dark and screentones can show moiree patterns not in the source material. While professional image editing tools like Photoshop and GIMP have been using linear light scaling for years, there currently seems to exist no plain image viewer giving correct output.
 More information: http://www.ericbrasseur.org/gamma.html
 * The available downsampling filters have been modified to offer the well known 'Hermite', 'Mitchell', 'Catrom' and 'Lanczos2' and give reference output identical to ImageMagick.
 More information on how resampling filters work: http://legacy.imagemagick.org/Usage/filter/
+* Dedicated functionality for manga/comic reading in display and controls as well as bookmark support for CBZ/CB7 files. Continue where you left.
+* Extended single instance mode: Now supports "PerFolder" additionaly to "Always" and "Never".
+* Smooth scrolling for pan keys.
+* Smart panning keys that combine scrolling and jumping to next/previous image based on zoom.
 
 ## System Requirements
 
 * 64-bit Windows OS
 * CPU with SSE2. This is the only instruction set fully working with linear light math at this time. 
 
+
+## Additional Thanks
+
+* To aviscaerulea for the optimized alpha blending code
+* To sdneon for the CBZ/CB7 implementation
 
 <br><br>
 
